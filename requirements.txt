@@ -1,0 +1,11 @@
+streamlit
+pandas
+numpy
+openpyxl
+streamlit-calendar
+Pillow
+folium
+streamlit-folium
+st-gsheets-connection
+google-api-python-client
+google-auth
