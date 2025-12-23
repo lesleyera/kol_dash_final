@@ -493,6 +493,11 @@ def load_data(master_tab, contract_tab, activity_tab):
         for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital"]:
             if col not in df_master.columns: df_master[col] = "-"
 
+        # [수정] KOL_ID를 Int형으로 변환
+        if "KOL_ID" in df_master.columns:
+             # 숫자로 변환 (실패 시 NaN), NaN은 0으로 채우고 정수로 변환
+             df_master["KOL_ID"] = pd.to_numeric(df_master["KOL_ID"], errors='coerce').fillna(0).astype(int)
+
         # [추가] 구글 드라이브 PDF 자동 연동
         # 시트에 PDF 링크가 없어도 드라이브에서 KOL_ID로 찾아 채워넣음
         drive_pdf_map = get_pdf_links_from_drive()
