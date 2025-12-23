@@ -411,10 +411,15 @@ def render_google_map(df_master, area_filter=None):
     return html_code
 
 # -----------------------------------------------------------------
-# [추가] 구글 드라이브 PDF 링크 자동 수집 함수
+# [추가] 구글 드라이브 PDF 링크 자동 수집 함수 (이름 기준)
 # -----------------------------------------------------------------
 @st.cache_data(ttl=600)
 def get_pdf_links_from_drive():
+    """
+    드라이브 폴더의 파일들을 조회하여,
+    { '파일명(확장자제외)': 'WebViewLink' } 형태의 딕셔너리를 반환합니다.
+    (기존 ID 기준 -> 이름 기준으로 변경됨)
+    """
     try:
         gcp_info = st.secrets["gcp_service_account"]
         folder_id = st.secrets["drive_settings"]["folder_id"]
@@ -432,13 +437,20 @@ def get_pdf_links_from_drive():
         
         files = results.get('files', [])
         pdf_map = {}
+        
         for f in files:
             name = f['name']
             link = f['webViewLink']
-            match = re.match(r"^(\d+)", name)
-            if match:
-                kol_id = match.group(1)
-                pdf_map[kol_id] = link
+            
+            # [수정] 파일명에서 .pdf 제거하고 이름만 추출
+            # 예: "Robert Jung.pdf" -> "Robert Jung"
+            if name.lower().endswith(".pdf"):
+                clean_name = name[:-4].strip() 
+            else:
+                clean_name = name.strip()
+            
+            pdf_map[clean_name] = link
+            
         return pdf_map
 
     except Exception as e:
@@ -498,14 +510,13 @@ def load_data(master_tab, contract_tab, activity_tab):
              # 숫자로 변환 (실패 시 NaN), NaN은 0으로 채우고 정수로 변환
              df_master["KOL_ID"] = pd.to_numeric(df_master["KOL_ID"], errors='coerce').fillna(0).astype(int)
 
-        # [추가] 구글 드라이브 PDF 자동 연동
-        # 시트에 PDF 링크가 없어도 드라이브에서 KOL_ID로 찾아 채워넣음
+        # [추가] 구글 드라이브 PDF 자동 연동 (이름 기준 매칭)
+        # 시트에 PDF 링크가 없어도 드라이브에서 '이름'으로 찾아 채워넣음
         drive_pdf_map = get_pdf_links_from_drive()
         
-        if "KOL_ID" in df_master.columns:
-            # KOL_ID를 문자열로 정리
-            df_master["KOL_ID_Str"] = df_master["KOL_ID"].astype(str).str.replace(".0", "").str.strip()
-            df_master["Auto_PDF_Link"] = df_master["KOL_ID_Str"].map(drive_pdf_map)
+        if "Name" in df_master.columns:
+            # 이름 앞뒤 공백 제거 후 매칭
+            df_master["Auto_PDF_Link"] = df_master["Name"].astype(str).str.strip().map(drive_pdf_map)
         else:
             df_master["Auto_PDF_Link"] = None
             
@@ -516,7 +527,7 @@ def load_data(master_tab, contract_tab, activity_tab):
              # 빈 값이나 '-'인 경우 자동 링크로 대체
              df_master["PDF_Link"] = df_master["PDF_Link"].replace("-", np.nan).replace("", np.nan)
              df_master["PDF_Link"] = df_master["PDF_Link"].combine_first(df_master["Auto_PDF_Link"])
-             df_master["PDF_Link"] = df_master["PDF_Link"].fillna("-")
+             df_master["PDF_Link"] = df_master["PDF_Link"].fillna(value=None) # 최종적으로 None으로 채움 (LinkColumn 버그 방지)
 
         col_name_c = find_col(df_contract, ["Name"])
         col_cstart = find_col(df_contract, ["Contract_Start"])
