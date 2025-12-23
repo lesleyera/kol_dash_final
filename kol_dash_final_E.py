@@ -493,7 +493,7 @@ def load_data(master_tab, contract_tab, activity_tab):
         for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital"]:
             if col not in df_master.columns: df_master[col] = "-"
 
-        # [수정] KOL_ID를 Int형으로 변환
+        # [수정] KOL_ID를 Int형으로 변환 (소수점 제거 및 정수화)
         if "KOL_ID" in df_master.columns:
              # 숫자로 변환 (실패 시 NaN), NaN은 0으로 채우고 정수로 변환
              df_master["KOL_ID"] = pd.to_numeric(df_master["KOL_ID"], errors='coerce').fillna(0).astype(int)
@@ -729,6 +729,11 @@ if page == "Worldwide KOL Status":
         df_list["Contract_End"] = pd.NaT
 
     df_display = df_list[cols_to_show].copy()
+    
+    # [수정] 링크가 없는 경우 ('-') None으로 변경하여 잘못된 클릭(새로고침) 방지
+    df_display["PDF_Link"] = df_display["PDF_Link"].replace("-", None).replace("", None)
+    df_display["Notion_Link"] = df_display["Notion_Link"].replace("-", None).replace("", None)
+
     df_display = df_display.sort_values(by="KOL_ID")
 
     def highlight_contract_expiring(row):
