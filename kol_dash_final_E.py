@@ -55,7 +55,7 @@ if "authenticated" not in st.session_state:
 # 로그인 & 세션 관리
 # -----------------------------------------------------------------
 def check_password():
-    """로그인 화면"""
+    """로그인 화면 (버튼 수직 정렬 완벽 수정)"""
     
     # 세션 관리
     if "last_active" in st.session_state:
@@ -88,42 +88,141 @@ def check_password():
             f"""
             <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+            
             .stApp {{ background-color: #FFFFFF; font-family: 'Inter', sans-serif; }}
-            .login-container {{ background-color: transparent; padding: 60px 20px; text-align: center; max-width: 600px; margin: 8vh auto 0 auto; }}
-            .login-title {{ font-size: 2.8rem; font-weight: 900; color: {COLOR_PRIMARY}; margin-bottom: 40px; white-space: nowrap; letter-spacing: -0.5px; line-height: 1.2; text-align: center; }}
-            .input-label {{ font-size: 1rem; font-weight: 700; color: #555; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1.2px; display: block; text-align: center; }}
-            .stTextInput {{ width: 100%; max-width: 400px; margin-left: auto !important; margin-right: auto !important; }}
-            .stTextInput > div > div > input {{ padding: 16px 20px; font-size: 1.2rem; border: 1px solid #D1D5DB !important; border-radius: 12px; text-align: center; background-color: #FAFAFA; color: #333; box-shadow: none !important; transition: all 0.2s ease; }}
-            .stTextInput > div > div > input:focus {{ border-color: {COLOR_PRIMARY} !important; background-color: #fff; box-shadow: 0 0 0 3px rgba(43, 92, 215, 0.15) !important; }}
-            div[data-testid="stButton"] {{ width: 100% !important; display: flex; justify-content: center; margin-top: 20px; }}
-            div[data-testid="stButton"] > button {{ background-color: {COLOR_PRIMARY}; color: white; border: none; padding: 14px 60px; font-size: 1.1rem; border-radius: 50px; cursor: pointer; font-weight: 700; transition: background-color 0.2s, transform 0.1s; box-shadow: 0 4px 12px rgba(0, 32, 96, 0.2); }}
-            div[data-testid="stButton"] > button:hover {{ background-color: #1e4bb8; color: white; border: none; }}
-            .error-msg {{ color: #D32F2F; background-color: #FEF2F2; padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 30px; font-weight: 600; text-align: center; }}
-            .login-footer {{ margin-top: 100px; font-size: 0.8rem; color: #CBD5E0; font-weight: 400; text-align: center; width: 100%; display: block; }}
+            
+            /* 로그인 컨테이너 (투명) */
+            .login-container {{
+                background-color: transparent;
+                padding: 60px 20px;
+                text-align: center;
+                max-width: 600px; 
+                margin: 8vh auto 0 auto; 
+            }}
+
+            /* 🔹 입력 + 버튼 세트 래퍼 (가운데 정렬용) */
+            .login-inner {{
+                max-width: 400px;
+                margin: 0 auto;
+            }}
+            
+            /* 타이틀 */
+            .login-title {{
+                font-size: 2.8rem; font-weight: 900; 
+                color: {COLOR_PRIMARY};
+                margin-bottom: 40px; white-space: nowrap; 
+                letter-spacing: -0.5px; line-height: 1.2; text-align: center;
+            }}
+            
+            /* 라벨 */
+            .input-label {{
+                font-size: 1rem; font-weight: 700; color: #555; 
+                margin-bottom: 15px; text-transform: uppercase; 
+                letter-spacing: 1.2px; display: block; text-align: center;
+            }}
+            
+            /* 입력창 컴포넌트 중앙 정렬 */
+            .stTextInput {{ 
+                width: 100%; 
+                max-width: 400px; 
+                margin-left: auto !important; 
+                margin-right: auto !important; 
+            }}
+            
+            .stTextInput > div > div > input {{
+                padding: 16px 20px; font-size: 1.2rem; 
+                border: 1px solid #D1D5DB !important;
+                border-radius: 12px; text-align: center; 
+                background-color: #FAFAFA; color: #333;
+                box-shadow: none !important; transition: all 0.2s ease;
+            }}
+            .stTextInput > div > div > input:focus {{
+                border-color: {COLOR_PRIMARY} !important; background-color: #fff;
+                box-shadow: 0 0 0 3px rgba(43, 92, 215, 0.15) !important;
+            }}
+            
+            /* 버튼 컴포넌트 중앙 정렬 */
+            div[data-testid="stButton"] {{
+                width: 100% !important;
+                display: flex;
+                justify-content: center;
+                margin-top: 20px;
+            }}
+            
+            div[data-testid="stButton"] > button {{
+                background-color: {COLOR_PRIMARY}; color: white; 
+                border: none; padding: 14px 60px;
+                font-size: 1.1rem; border-radius: 50px; 
+                cursor: pointer; font-weight: 700;
+                transition: background-color 0.2s, transform 0.1s; 
+                box-shadow: 0 4px 12px rgba(0, 32, 96, 0.2);
+            }}
+            div[data-testid="stButton"] > button:hover {{ 
+                background-color: #1e4bb8; color: white; border: none;
+            }}
+            
+            .error-msg {{
+                color: #D32F2F; background-color: #FEF2F2; 
+                padding: 12px; border-radius: 8px; font-size: 0.9rem; 
+                margin-top: 30px; font-weight: 600; text-align: center;
+            }}
+            
+            .login-footer {{ 
+                margin-top: 100px; font-size: 0.8rem; 
+                color: #CBD5E0; font-weight: 400; text-align: center; 
+                width: 100%; display: block;
+            }}
+            
             header {{visibility: hidden;}} footer {{visibility: hidden;}}
             </style>
             """, unsafe_allow_html=True
         )
         
+        # 3-컬럼 레이아웃 그대로 유지
         col1, col2, col3 = st.columns([1, 1.5, 1])
+        
         with col2:
             st.markdown('<div class="login-container">', unsafe_allow_html=True)
+            
+            # 로고 이미지 중앙 정렬
             col_img1, col_img2, col_img3 = st.columns([1, 1, 1])
             with col_img2:
-                try: st.image("image_0.png", width=60)
-                except: pass
+                try:
+                    st.image("image_0.png", width=60)
+                except:
+                    pass
+            
             st.markdown('<div class="login-title">MEDIT KOL Performance Cockpit</div>', unsafe_allow_html=True)
+            
+             # 🔹 Access Code + Enter 버튼을 같은 세로축 중앙에 배치
             inner_left, inner_center, inner_right = st.columns([1, 2, 1])
             with inner_center:
                 st.markdown('<div class="input-label">Access Code</div>', unsafe_allow_html=True)
-                st.text_input("Password", type="password", key="password", on_change=password_entered, label_visibility="collapsed")
+
+                st.text_input(
+                    "Password",
+                    type="password",
+                    key="password",
+                    on_change=password_entered,
+                    label_visibility="collapsed"
+                )
+
+                # 버튼 (입력창과 같은 중앙축, 바로 아래 위치)
                 st.button("Enter", on_click=password_entered, use_container_width=True)
+
             if st.session_state.get("auth_error"):
-                st.markdown('<div class="error-msg">⚠️ Incorrect Access Code</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="error-msg">⚠️ Incorrect Access Code</div>',
+                    unsafe_allow_html=True
+                )
+            
             st.markdown('<div class="login-footer">© 2025 powered by DWG Inc.</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)  # </div class="login-container">
+
         return False
+    
     return True
+
 
 if not check_password():
     st.stop()
@@ -315,6 +414,11 @@ def render_google_map(df_master, area_filter=None):
 # -----------------------------------------------------------------
 @st.cache_data(ttl=600)
 def get_pdf_links_from_drive():
+    """
+    드라이브 폴더의 파일들을 조회하여,
+    { '파일명(확장자제외)': 'WebViewLink' } 형태의 딕셔너리를 반환합니다.
+    (기존 ID 기준 -> 이름 기준으로 변경됨)
+    """
     try:
         gcp_info = st.secrets["gcp_service_account"]
         folder_id = st.secrets["drive_settings"]["folder_id"]
@@ -701,12 +805,9 @@ elif page == "Performance Board":
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
-    st.markdown("### Active & Delayed Tasks")
-    status_df = df_filtered[
-        (df_filtered["Status_norm"] == "On Progress") | 
-        (df_filtered["Delayed_flag"] == True) | 
-        (df_filtered["Warning_flag"] == True)
-    ].copy()
+    # [수정] Active & Delayed Tasks -> Monthly All Tasks (전체 태스크 표시)
+    st.markdown("### Monthly All Tasks")
+    status_df = df_filtered.copy()
     
     if not status_df.empty:
         status_df["Warning/Delayed"] = status_df.apply(create_warning_delayed_col, axis=1)
@@ -718,7 +819,7 @@ elif page == "Performance Board":
         height_val = (len(status_disp) + 1) * 35 + 3
         st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
     else:
-        st.info("No active or delayed tasks.")
+        st.info("No tasks found for this period.")
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
