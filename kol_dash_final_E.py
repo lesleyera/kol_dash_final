@@ -55,7 +55,7 @@ if "authenticated" not in st.session_state:
 # 로그인 & 세션 관리
 # -----------------------------------------------------------------
 def check_password():
-    """로그인 화면 (버튼 수직 정렬 완벽 수정)"""
+    """로그인 화면"""
     
     # 세션 관리
     if "last_active" in st.session_state:
@@ -88,145 +88,44 @@ def check_password():
             f"""
             <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
-            
             .stApp {{ background-color: #FFFFFF; font-family: 'Inter', sans-serif; }}
-            
-            /* 로그인 컨테이너 (투명) */
-            .login-container {{
-                background-color: transparent;
-                padding: 60px 20px;
-                text-align: center;
-                max-width: 600px; 
-                margin: 8vh auto 0 auto; 
-            }}
-
-            /* 🔹 입력 + 버튼 세트 래퍼 (가운데 정렬용) */
-            .login-inner {{
-                max-width: 400px;
-                margin: 0 auto;
-            }}
-            
-            /* 타이틀 */
-            .login-title {{
-                font-size: 2.8rem; font-weight: 900; 
-                color: {COLOR_PRIMARY};
-                margin-bottom: 40px; white-space: nowrap; 
-                letter-spacing: -0.5px; line-height: 1.2; text-align: center;
-            }}
-            
-            /* 라벨 */
-            .input-label {{
-                font-size: 1rem; font-weight: 700; color: #555; 
-                margin-bottom: 15px; text-transform: uppercase; 
-                letter-spacing: 1.2px; display: block; text-align: center;
-            }}
-            
-            /* 입력창 컴포넌트 중앙 정렬 */
-            .stTextInput {{ 
-                width: 100%; 
-                max-width: 400px; 
-                margin-left: auto !important; 
-                margin-right: auto !important; 
-            }}
-            
-            .stTextInput > div > div > input {{
-                padding: 16px 20px; font-size: 1.2rem; 
-                border: 1px solid #D1D5DB !important;
-                border-radius: 12px; text-align: center; 
-                background-color: #FAFAFA; color: #333;
-                box-shadow: none !important; transition: all 0.2s ease;
-            }}
-            .stTextInput > div > div > input:focus {{
-                border-color: {COLOR_PRIMARY} !important; background-color: #fff;
-                box-shadow: 0 0 0 3px rgba(43, 92, 215, 0.15) !important;
-            }}
-            
-            /* 버튼 컴포넌트 중앙 정렬 */
-            div[data-testid="stButton"] {{
-                width: 100% !important;
-                display: flex;
-                justify-content: center;
-                margin-top: 20px;
-            }}
-            
-            div[data-testid="stButton"] > button {{
-                background-color: {COLOR_PRIMARY}; color: white; 
-                border: none; padding: 14px 60px;
-                font-size: 1.1rem; border-radius: 50px; 
-                cursor: pointer; font-weight: 700;
-                transition: background-color 0.2s, transform 0.1s; 
-                box-shadow: 0 4px 12px rgba(0, 32, 96, 0.2);
-            }}
-            div[data-testid="stButton"] > button:hover {{ 
-                background-color: #1e4bb8; color: white; border: none;
-            }}
-            
-            .error-msg {{
-                color: #D32F2F; background-color: #FEF2F2; 
-                padding: 12px; border-radius: 8px; font-size: 0.9rem; 
-                margin-top: 30px; font-weight: 600; text-align: center;
-            }}
-            
-            .login-footer {{ 
-                margin-top: 100px; font-size: 0.8rem; 
-                color: #CBD5E0; font-weight: 400; text-align: center; 
-                width: 100%; display: block;
-            }}
-            
+            .login-container {{ background-color: transparent; padding: 60px 20px; text-align: center; max-width: 600px; margin: 8vh auto 0 auto; }}
+            .login-title {{ font-size: 2.8rem; font-weight: 900; color: {COLOR_PRIMARY}; margin-bottom: 40px; white-space: nowrap; letter-spacing: -0.5px; line-height: 1.2; text-align: center; }}
+            .input-label {{ font-size: 1rem; font-weight: 700; color: #555; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1.2px; display: block; text-align: center; }}
+            .stTextInput {{ width: 100%; max-width: 400px; margin-left: auto !important; margin-right: auto !important; }}
+            .stTextInput > div > div > input {{ padding: 16px 20px; font-size: 1.2rem; border: 1px solid #D1D5DB !important; border-radius: 12px; text-align: center; background-color: #FAFAFA; color: #333; box-shadow: none !important; transition: all 0.2s ease; }}
+            .stTextInput > div > div > input:focus {{ border-color: {COLOR_PRIMARY} !important; background-color: #fff; box-shadow: 0 0 0 3px rgba(43, 92, 215, 0.15) !important; }}
+            div[data-testid="stButton"] {{ width: 100% !important; display: flex; justify-content: center; margin-top: 20px; }}
+            div[data-testid="stButton"] > button {{ background-color: {COLOR_PRIMARY}; color: white; border: none; padding: 14px 60px; font-size: 1.1rem; border-radius: 50px; cursor: pointer; font-weight: 700; transition: background-color 0.2s, transform 0.1s; box-shadow: 0 4px 12px rgba(0, 32, 96, 0.2); }}
+            div[data-testid="stButton"] > button:hover {{ background-color: #1e4bb8; color: white; border: none; }}
+            .error-msg {{ color: #D32F2F; background-color: #FEF2F2; padding: 12px; border-radius: 8px; font-size: 0.9rem; margin-top: 30px; font-weight: 600; text-align: center; }}
+            .login-footer {{ margin-top: 100px; font-size: 0.8rem; color: #CBD5E0; font-weight: 400; text-align: center; width: 100%; display: block; }}
             header {{visibility: hidden;}} footer {{visibility: hidden;}}
             </style>
             """, unsafe_allow_html=True
         )
-        
-        # 3-컬럼 레이아웃 그대로 유지
         col1, col2, col3 = st.columns([1, 1.5, 1])
-        
         with col2:
             st.markdown('<div class="login-container">', unsafe_allow_html=True)
-            
-            # 로고 이미지 중앙 정렬
             col_img1, col_img2, col_img3 = st.columns([1, 1, 1])
             with col_img2:
-                try:
-                    st.image("image_0.png", width=60)
-                except:
-                    pass
-            
+                try: st.image("image_0.png", width=60)
+                except: pass
             st.markdown('<div class="login-title">MEDIT KOL Performance Cockpit</div>', unsafe_allow_html=True)
-            
-             # 🔹 Access Code + Enter 버튼을 같은 세로축 중앙에 배치
             inner_left, inner_center, inner_right = st.columns([1, 2, 1])
             with inner_center:
                 st.markdown('<div class="input-label">Access Code</div>', unsafe_allow_html=True)
-
-                st.text_input(
-                    "Password",
-                    type="password",
-                    key="password",
-                    on_change=password_entered,
-                    label_visibility="collapsed"
-                )
-
-                # 버튼 (입력창과 같은 중앙축, 바로 아래 위치)
+                st.text_input("Password", type="password", key="password", on_change=password_entered, label_visibility="collapsed")
                 st.button("Enter", on_click=password_entered, use_container_width=True)
-
             if st.session_state.get("auth_error"):
-                st.markdown(
-                    '<div class="error-msg">⚠️ Incorrect Access Code</div>',
-                    unsafe_allow_html=True
-                )
-            
+                st.markdown('<div class="error-msg">⚠️ Incorrect Access Code</div>', unsafe_allow_html=True)
             st.markdown('<div class="login-footer">© 2025 powered by DWG Inc.</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)  # </div class="login-container">
-
+            st.markdown('</div>', unsafe_allow_html=True)
         return False
-    
     return True
-
 
 if not check_password():
     st.stop()
-
 
 # -----------------------------------------------------------------
 # 1. CSS Styles (Main Dashboard)
@@ -410,15 +309,10 @@ def render_google_map(df_master, area_filter=None):
     return html_code
 
 # -----------------------------------------------------------------
-# [추가] 구글 드라이브 PDF 링크 자동 수집 함수 (이름 기준)
+# [설정 변경] 드라이브는 파일이 많아 10초 캐시 (실시간성 확보)
 # -----------------------------------------------------------------
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=10)
 def get_pdf_links_from_drive():
-    """
-    드라이브 폴더의 파일들을 조회하여,
-    { '파일명(확장자제외)': 'WebViewLink' } 형태의 딕셔너리를 반환합니다.
-    (기존 ID 기준 -> 이름 기준으로 변경됨)
-    """
     try:
         gcp_info = st.secrets["gcp_service_account"]
         folder_id = st.secrets["drive_settings"]["folder_id"]
@@ -428,10 +322,11 @@ def get_pdf_links_from_drive():
         )
         service = build('drive', 'v3', credentials=creds)
 
+        # [최적화 유지] 필요한 필드만 가져오고, 200개로 제한
         results = service.files().list(
             q=f"'{folder_id}' in parents and trashed=false",
-            fields="nextPageToken, files(id, name, webViewLink)",
-            pageSize=1000
+            fields="files(id, name, webViewLink)",
+            pageSize=200 
         ).execute()
         
         files = results.get('files', [])
@@ -440,26 +335,21 @@ def get_pdf_links_from_drive():
         for f in files:
             name = f['name']
             link = f['webViewLink']
-            
-            # [수정] 파일명에서 .pdf 제거하고 이름만 추출
             if name.lower().endswith(".pdf"):
                 clean_name = name[:-4].strip() 
             else:
                 clean_name = name.strip()
-            
             pdf_map[clean_name] = link
             
         return pdf_map
 
     except Exception as e:
-        # 오류 발생 시 빈 dict 반환 (로컬 테스트나 설정 미비 시 앱이 죽지 않도록)
-        # st.warning(f"Drive API Error: {e}") 
         return {}
 
 # -----------------------------------------------------------------
-# [수정] 데이터 로드 (구글 시트 + 드라이브 연동)
+# [설정 변경] 시트 데이터는 5초 캐시 (사실상 실시간)
 # -----------------------------------------------------------------
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=5)
 def load_data(master_tab, contract_tab, activity_tab):
     conn = st.connection("gsheets", type=GSheetsConnection)
     try:
@@ -472,11 +362,8 @@ def load_data(master_tab, contract_tab, activity_tab):
         col_name_m = find_col(df_master_raw, ["Name"])
         col_area_m = find_col(df_master_raw, ["Area"])
         col_country_m = find_col(df_master_raw, ["Country"])
-        
-        # [수정] Notion, PDF 컬럼 매칭 (컬럼명이 다양할 수 있어 여러 후보군 지정)
         col_notion_m = find_col(df_master_raw, ["Notion", "Link", "Notion Link", "Notion_Link"])
         col_pdf_m = find_col(df_master_raw, ["PDF_Link", "Google_Sheet_Link", "PDF", "Sheet", "Drive", "File"]) 
-        
         col_scanner_m = find_col(df_master_raw, ["Delivered Scanner", "Scanner", "Device"])
         col_serial_m = find_col(df_master_raw, ["Serial No", "Serial", "SN"])
         col_lat_m = find_col(df_master_raw, ["lat", "latitude", "Latitude"])
@@ -499,34 +386,24 @@ def load_data(master_tab, contract_tab, activity_tab):
         
         df_master = df_master_raw.rename(columns=rename_m)
         
-        # 누락된 컬럼 처리
         for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital"]:
             if col not in df_master.columns: df_master[col] = "-"
 
-        # [수정] KOL_ID를 Int형으로 변환 (소수점 제거 및 정수화)
         if "KOL_ID" in df_master.columns:
-             # 숫자로 변환 (실패 시 NaN), NaN은 0으로 채우고 정수로 변환
              df_master["KOL_ID"] = pd.to_numeric(df_master["KOL_ID"], errors='coerce').fillna(0).astype(int)
 
-        # [추가] 구글 드라이브 PDF 자동 연동 (이름 기준 매칭)
-        # 시트에 PDF 링크가 없어도 드라이브에서 '이름'으로 찾아 채워넣음
         drive_pdf_map = get_pdf_links_from_drive()
         
         if "Name" in df_master.columns:
-            # 이름 앞뒤 공백 제거 후 매칭
             df_master["Auto_PDF_Link"] = df_master["Name"].astype(str).str.strip().map(drive_pdf_map)
         else:
             df_master["Auto_PDF_Link"] = None
             
-        # PDF_Link 우선순위: 수동입력 > 자동매칭
         if "PDF_Link" not in df_master.columns:
              df_master["PDF_Link"] = df_master["Auto_PDF_Link"]
         else:
-             # 빈 값이나 '-'인 경우 자동 링크로 대체
              df_master["PDF_Link"] = df_master["PDF_Link"].replace("-", np.nan).replace("", np.nan)
              df_master["PDF_Link"] = df_master["PDF_Link"].combine_first(df_master["Auto_PDF_Link"])
-             
-             # [수정] fillna(None) 대신 where를 사용하여 None 할당 (Pandas 오류 해결)
              df_master["PDF_Link"] = df_master["PDF_Link"].where(pd.notnull(df_master["PDF_Link"]), None)
 
         col_name_c = find_col(df_contract, ["Name"])
@@ -586,17 +463,14 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
     scanner = info.iloc[0]["Delivered_Scanner"] if not info.empty else "-"
     serial_no = info.iloc[0]["Serial_No"] if not info.empty else "-"
     
-    # [수정] 링크 유효성 체크 및 버튼 렌더링
     notion_url = info.iloc[0]["Notion_Link"] if not info.empty else None
     pdf_url = info.iloc[0]["PDF_Link"] if not info.empty else None 
 
-    # PDF 버튼
     if pdf_url and str(pdf_url).startswith("http"):
         pdf_btn_html = f'<a href="{pdf_url}" target="_blank" class="box-btn">📂 Open PDF (Drive)</a>'
     else:
         pdf_btn_html = '<span style="color:#ccc; font-size:0.85rem; margin-right:10px;">🚫 No PDF</span>'
 
-    # Notion 버튼
     if notion_url and str(notion_url).startswith("http"):
         notion_btn_html = f'<a href="{notion_url}" target="_blank" class="box-btn">🔗 Notion Page</a>'
     else:
@@ -740,11 +614,8 @@ if page == "Worldwide KOL Status":
         df_list["Contract_End"] = pd.NaT
 
     df_display = df_list[cols_to_show].copy()
-    
-    # [수정] 링크가 없는 경우 ('-') None으로 변경하여 잘못된 클릭(새로고침) 방지
     df_display["PDF_Link"] = df_display["PDF_Link"].replace("-", None).replace("", None)
     df_display["Notion_Link"] = df_display["Notion_Link"].replace("-", None).replace("", None)
-
     df_display = df_display.sort_values(by="KOL_ID")
 
     def highlight_contract_expiring(row):
@@ -805,7 +676,6 @@ elif page == "Performance Board":
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
-    # [수정] Active & Delayed Tasks -> Monthly All Tasks (전체 태스크 표시)
     st.markdown("### Monthly All Tasks")
     status_df = df_filtered.copy()
     
