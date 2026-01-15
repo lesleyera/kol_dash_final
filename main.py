@@ -16,13 +16,14 @@ st.set_page_config(page_title="MEDIT KOL Performance Cockpit", page_icon="💎",
 if not check_password(): st.stop()
 local_css()
 
-# 1. Data Load (인자 오류 수정)
+# 1. Data Load (에러 수정: 변수 3개로 매칭)
 try:
-    df_master, df_contract, df_activity, last_update = load_data(
+    df_master, df_contract, df_activity = load_data(
         master_tab=FILE_SETTINGS["MASTER_TAB"],
         contract_tab=FILE_SETTINGS["CONTRACT_TAB"],
         activity_tab=FILE_SETTINGS["ACTIVITY_TAB"]
     )
+    last_update = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 except Exception as e:
     st.error(f"데이터 로드 오류: {e}")
     st.stop()
@@ -33,18 +34,16 @@ with st.sidebar:
     st.markdown("---")
     st.caption(f"Last Update: {last_update}")
 
-# 3. App Header
+# 3. Header
 st.markdown('<div class="app-header"><div class="app-title">MEDIT KOL Performance Cockpit</div></div>', unsafe_allow_html=True)
-
-# 상단 필터 컬럼 (Page별 노출 제어)
 c_year, c_month, c_area = st.columns(3)
 
 # 4. Page Routing
 if page == "Worldwide KOL Status":
-    # [수정] 상단 필터 삭제 및 지역별 KPI 추가
-    usa_count = df_master[df_master["Area"].str.upper().str.strip() == "USA"].shape[0]
-    eu_count = df_master[df_master["Area"].str.upper().str.strip() == "EUROPE"].shape[0]
-    latam_count = df_master[df_master["Area"].str.upper().str.strip() == "LATAM"].shape[0]
+    # [수정] 지역별 KPI 추가
+    usa_count = df_master[df_master["Area"].str.upper().str.strip() == "USA"].shape[0] if "Area" in df_master.columns else 0
+    eu_count = df_master[df_master["Area"].str.upper().str.strip() == "EUROPE"].shape[0] if "Area" in df_master.columns else 0
+    latam_count = df_master[df_master["Area"].str.upper().str.strip() == "LATAM"].shape[0] if "Area" in df_master.columns else 0
     
     k1, k2, k3, k4 = st.columns(4)
     with k1: kpi_text("Total KOLs", f"{len(df_master)}")
@@ -56,15 +55,14 @@ if page == "Worldwide KOL Status":
     components.html(render_google_map(df_master, area_filter="All"), height=500)
     
     st.markdown("---")
-    # [수정] KOL 상세 정보 조회 (기존 Admin Board 기능 통합)
+    # [수정] KOL 정보 확인 및 사진 추가 (Admin Board 통합)
     st.markdown("#### KOL Information Details")
     all_kol_names = sorted(df_master["Name"].dropna().unique().tolist())
-    target_kol = st.selectbox("Select KOL to view Profile", ["-"] + all_kol_names)
+    target_kol = st.selectbox("Select KOL Name", ["-"] + all_kol_names)
     if target_kol != "-":
         render_kol_detail_admin(target_kol, df_master, df_contract, df_activity)
 
 elif page == "Performance Board":
-    # 상단 필터 활성화
     with c_year:
         years = sorted(df_activity["Date"].dt.year.unique().tolist(), reverse=True)
         selected_year = st.selectbox("Year", years if years else [2025])
@@ -83,7 +81,7 @@ elif page == "Performance Board":
         df_filtered = df_filtered[df_filtered["Name"].isin(names_in_area)]
 
     st.markdown("### Monthly Task List")
-    # [수정] 리스트 상태 필터 추가
+    # [수정] 상태 필터 추가
     status_options = ["TBD", "Planned", "On Progress", "Done"]
     selected_status = st.multiselect("Filter by Status", status_options, default=status_options)
     
@@ -92,10 +90,7 @@ elif page == "Performance Board":
     if not df_display.empty:
         df_display["Date"] = df_display["Date"].dt.strftime("%Y-%m-%d")
         df_display["Warning/Delayed"] = df_display.apply(create_warning_delayed_col, axis=1)
-        cols_show = ["Name", "Status_norm", "Date", "Task", "Activity", "Warning/Delayed"]
-        st.dataframe(
-            df_display[cols_show].style.apply(highlight_critical_rows, axis=1),
-            use_container_width=True, hide_index=True
-        )
+        cols = ["Name", "Status_norm", "Date", "Task", "Activity", "Warning/Delayed"]
+        st.dataframe(df_display[cols].style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True)
     else:
-        st.info("No matching tasks found.")
+        st.info("검색 결과가 없습니다.")
