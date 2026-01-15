@@ -62,6 +62,8 @@ def load_data(master_tab, contract_tab, activity_tab):
         col_lat_m = find_col(df_master_raw, ["lat", "latitude", "Latitude"])
         col_lon_m = find_col(df_master_raw, ["lon", "longitude", "Longitude"])
         col_hospital_m = find_col(df_master_raw, ["Hospital", "Affiliation"])
+        # [Added] Photo Column Detection
+        col_photo_m = find_col(df_master_raw, ["Photo", "Image", "Picture", "Profile"])
         
         rename_m = {
             col_name_m: "Name", 
@@ -76,10 +78,12 @@ def load_data(master_tab, contract_tab, activity_tab):
         if col_lat_m: rename_m[col_lat_m] = "Latitude"
         if col_lon_m: rename_m[col_lon_m] = "Longitude"
         if col_hospital_m: rename_m[col_hospital_m] = "Hospital"
+        if col_photo_m: rename_m[col_photo_m] = "Photo"
         
         df_master = df_master_raw.rename(columns=rename_m)
         
-        for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital"]:
+        # Ensure columns exist
+        for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital", "Photo"]:
             if col not in df_master.columns: df_master[col] = "-"
 
         if "KOL_ID" in df_master.columns:
