@@ -29,16 +29,20 @@ def render_google_map(df_master, area_filter=None):
         df_map["Latitude_Raw"] = pd.to_numeric(df_map[lat_col], errors="coerce")
         df_map["Longitude_Raw"] = pd.to_numeric(df_map[lon_col], errors="coerce")
         df_map = df_map.dropna(subset=["Latitude_Raw", "Longitude_Raw"])
-        df_map["Longitude"] = df_map["Latitude_Raw"]
-        df_map["Latitude"] = df_map["Longitude_Raw"]
-        map_center_lat = df_map["Longitude"].mean()
-        map_center_lng = df_map["Latitude"].mean()
+        
+        # [Corrected] Fixed swapped coordinates issue
+        df_map["Latitude"] = df_map["Latitude_Raw"]
+        df_map["Longitude"] = df_map["Longitude_Raw"]
+        
+        map_center_lat = df_map["Latitude"].mean()
+        map_center_lng = df_map["Longitude"].mean()
 
         markers_list = []
         for _, row in df_map.iterrows():
             name = row.get("Name", "Unknown")
             info_content = f"<b>{name}</b><br>{row.get('Hospital','')}"
-            markers_list.append({"name": name, "lat": float(row["Longitude"]), "lng": float(row["Latitude"]), "info": info_content})
+            # Google Maps uses { lat, lng } format
+            markers_list.append({"name": name, "lat": float(row["Latitude"]), "lng": float(row["Longitude"]), "info": info_content})
         import json as _json
         markers_json = _json.dumps(markers_list)
 
@@ -46,7 +50,7 @@ def render_google_map(df_master, area_filter=None):
     <!DOCTYPE html><html><head><style>#map {{ height: 100%; width: 100%; border-radius: 12px; }} html, body {{ height: 100%; margin: 0; padding: 0; }}</style></head>
     <body><div id="map"></div><script>
     function initMap() {{
-        const map = new google.maps.Map(document.getElementById("map"), {{ zoom: {3 if area_filter == 'All' else 4}, center: {{ lat: {map_center_lat}, lng: {map_center_lng} }}, mapTypeControl: false, streetViewControl: false }});
+        const map = new google.maps.Map(document.getElementById("map"), {{ zoom: {2 if area_filter == 'All' else 4}, center: {{ lat: {map_center_lat}, lng: {map_center_lng} }}, mapTypeControl: false, streetViewControl: false }});
         const markersData = {markers_json};
         const infoWindow = new google.maps.InfoWindow();
         markersData.forEach((data) => {{
@@ -89,7 +93,6 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
     else:
         notion_btn_html = '<span style="color:#ccc; font-size:0.85rem;">🔗 No Notion</span>'
 
-    # Layout: Image on left (if exists), Details on right
     c1, c2 = st.columns([1, 4])
     
     with c1:
@@ -145,6 +148,7 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
         st.markdown(html_content, unsafe_allow_html=True)
 
 def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame, df_activity: pd.DataFrame):
+    # This function is kept for compatibility but not primarily used in the new flow
     render_kol_info_box(kol_name, df_master, df_contract)
     st.markdown('<div class="section-title">Contract Progress Rates</div>', unsafe_allow_html=True)
     

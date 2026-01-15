@@ -32,7 +32,6 @@ except FileNotFoundError:
         initial_sidebar_state="collapsed",
     )
 
-# 세션 상태 초기화
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
@@ -53,10 +52,8 @@ if df_master is None: st.stop()
 # -----------------------------------------------------------------
 # 2. Main Logic & Routing
 # -----------------------------------------------------------------
-# [Updated] Remove top-level global filters. Only Page selector remains here.
 c_page, c_empty = st.columns([1.5, 2.5])
 with c_page:
-    # [Updated] Admin Board removed from options
     page = st.selectbox("Select Board", ["Worldwide KOL Status", "Performance Board"])
 
 st.markdown(
@@ -77,16 +74,14 @@ st.markdown(
 
 # [Page 1] Worldwide KOL Status
 if page == "Worldwide KOL Status":
-    # [Added] Region KPI
+    # KPI Logic
     total_kol_cnt = df_master["Name"].nunique()
     
-    # Simple logic to count regions based on Area column text (Case insensitive)
     def count_area(keyword_list):
         if "Area" not in df_master.columns: return 0
         mask = df_master["Area"].astype(str).str.lower().apply(lambda x: any(k in x for k in keyword_list))
         return df_master[mask]["Name"].nunique()
 
-    # Define keywords for regions
     usa_cnt = count_area(["usa", "united states", "north america", "america"])
     europe_cnt = count_area(["europe", "eu"])
     latam_cnt = count_area(["latam", "latin", "south america", "brazil"])
@@ -100,43 +95,41 @@ if page == "Worldwide KOL Status":
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
 
     st.markdown("#### KOL Location Map")
-    # [Updated] No area filter for map in this view as requested (Global view)
     map_html = render_google_map(df_master, area_filter="All")
     components.html(map_html, height=500)
     
     st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
     
-    # [Moved & Updated] KOL Information Filter (from Admin) and Interaction
     st.markdown("#### KOL Information")
     
     c_list, c_detail = st.columns([1.2, 1])
 
     with c_list:
-        st.markdown("Click on a row to view details or select from the dropdown.")
+        # [Deleted] "Select a KOL..." instruction text is removed.
         
-        # Search/Select Box
-        all_kol_names = sorted(df_master["Name"].dropna().unique().tolist())
-        
-        # Session State for KOL Selection
-        if "selected_kol_ww" not in st.session_state:
-            st.session_state["selected_kol_ww"] = "-"
-
-        # Callback for Selectbox
-        def update_kol_from_select():
-            # Value is automatically updated in session state key 'selected_kol_ww'
-            pass
-
-        selected_kol_dropdown = st.selectbox(
-            "Search KOL", 
-            ["-"] + all_kol_names, 
-            key="selected_kol_ww", 
-            on_change=update_kol_from_select
-        )
-
+        # [Added] Filter Tags
         cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
         df_display = df_master[cols_to_show].copy().sort_values("Name")
         
-        # Interactive Dataframe
+        # Combine searchable columns for filtering
+        filter_options = sorted(list(set(
+            df_display["Name"].tolist() + 
+            df_display["Area"].dropna().unique().tolist() + 
+            df_display["Country"].dropna().unique().tolist()
+        )))
+        
+        search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
+        
+        if search_tags:
+            # Filter logic: OR logic within columns, AND logic for tags could be complex.
+            # Simplified: Row matches if ANY of the selected tags appear in Name, Area, or Country
+            mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
+            df_display = df_display[mask]
+
+        if "selected_kol_ww" not in st.session_state:
+            st.session_state["selected_kol_ww"] = "-"
+
+        # Interactive Dataframe with Increased Height
         selection = st.dataframe(
             df_display,
             column_config={
@@ -146,16 +139,14 @@ if page == "Worldwide KOL Status":
             },
             use_container_width=True,
             hide_index=True,
-            height=600,
+            height=800,  # [Updated] Increased height
             on_select="rerun",
             selection_mode="single-row"
         )
         
-        # Handle Dataframe Selection
         if selection and selection["selection"]["rows"]:
             row_idx = selection["selection"]["rows"][0]
             selected_name_from_df = df_display.iloc[row_idx]["Name"]
-            # Update session state if different
             if st.session_state["selected_kol_ww"] != selected_name_from_df:
                 st.session_state["selected_kol_ww"] = selected_name_from_df
                 st.rerun()
@@ -165,11 +156,10 @@ if page == "Worldwide KOL Status":
         if target_kol and target_kol != "-":
             render_kol_info_box(target_kol, df_master, df_contract)
         else:
-            st.info("Select a KOL from the list or dropdown to view details.")
+            st.info("Select a KOL from the list to view details.")
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
-    # [Moved] Filters are now local to this page
     df_activity["Year"] = df_activity["Date"].dt.year
     df_activity["Month_Num"] = df_activity["Date"].dt.month
     available_years = sorted(df_activity["Year"].dropna().unique().tolist())
@@ -177,7 +167,6 @@ elif page == "Performance Board":
     default_year = today.year if today.year in available_years else (max(available_years) if available_years else today.year)
     available_month_names = list(MONTH_NAME_MAP.values())
 
-    # Filter Layout
     c_year, c_month, c_area = st.columns(3)
     
     with c_year:
@@ -193,7 +182,6 @@ elif page == "Performance Board":
         area_options = ["All"] + sorted(df_master["Area"].dropna().unique().tolist())
         selected_area = st.selectbox("Area", options=area_options, index=0)
     
-    # Filter Logic
     mask = df_activity["Year"] == selected_year
     if selected_month_name != "All":
         mask &= df_activity["Month_Num"] == MONTH_NAME_TO_NUM[selected_month_name]
@@ -223,13 +211,19 @@ elif page == "Performance Board":
 
     st.markdown("### Monthly All Tasks")
     
-    # [Added] Status Filter for the list
-    all_statuses = ["All"] + sorted(df_filtered["Status_norm"].dropna().unique().tolist())
-    selected_status_filter = st.selectbox("Filter by Status", options=all_statuses, index=0)
+    # [Added] Keyword Filter (Tag-style)
+    all_keywords = sorted(list(set(
+        df_filtered["Name"].tolist() + 
+        df_filtered["Task"].astype(str).unique().tolist() + 
+        df_filtered["Status_norm"].unique().tolist()
+    )))
+    
+    task_tags = st.multiselect("Filter Tasks (Name, Task, Status)", options=all_keywords, placeholder="Select tags to filter...")
     
     status_df = df_filtered.copy()
-    if selected_status_filter != "All":
-        status_df = status_df[status_df["Status_norm"] == selected_status_filter]
+    if task_tags:
+         mask_task = status_df.apply(lambda x: any(tag in str(x.values) for tag in task_tags), axis=1)
+         status_df = status_df[mask_task]
     
     if not status_df.empty:
         status_df["Warning/Delayed"] = status_df.apply(create_warning_delayed_col, axis=1)
@@ -238,7 +232,10 @@ elif page == "Performance Board":
         status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
         status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
         
-        height_val = (len(status_disp) + 1) * 35 + 3
+        # [Updated] Increased height
+        height_val = min(len(status_disp) * 35 + 38, 800)
+        if len(status_disp) > 10: height_val = 600
+        
         st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
     else:
         st.info("No tasks found for this period.")
