@@ -30,7 +30,6 @@ def render_google_map(df_master, area_filter=None):
         df_map["Longitude_Raw"] = pd.to_numeric(df_map[lon_col], errors="coerce")
         df_map = df_map.dropna(subset=["Latitude_Raw", "Longitude_Raw"])
         
-        # [Corrected] Fixed swapped coordinates issue
         df_map["Latitude"] = df_map["Latitude_Raw"]
         df_map["Longitude"] = df_map["Longitude_Raw"]
         
@@ -105,41 +104,42 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
             """, unsafe_allow_html=True)
             
     with c2:
+        # [Updated] Added width: 100% and expanded container styles
         html_content = f"""
-        <div class="info-box" style="margin-top:0;">
-            <div style="display:flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px;">
-                <div style="margin-right:20px;">
+        <div class="info-box" style="margin-top:0; width:100%; max-width:none;">
+            <div style="display:flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; width:100%;">
+                <div style="flex:1; min-width:120px; margin-right:10px;">
                     <div class="info-label">Name</div>
                     <div class="info-val">{kol_name}</div>
                 </div>
-                <div style="margin-right:20px;">
+                <div style="flex:1; min-width:100px; margin-right:10px;">
                     <div class="info-label">Region</div>
                     <div class="info-val">{area}</div>
                 </div>
-                <div style="margin-right:20px;">
+                <div style="flex:1; min-width:100px; margin-right:10px;">
                     <div class="info-label">Country</div>
                     <div class="info-val">{country}</div>
                 </div>
-                <div style="margin-right:20px;">
+                <div style="flex:1.5; min-width:180px; margin-right:10px;">
                     <div class="info-label">Contract Period</div>
                     <div class="info-val">{contract_period_str}</div>
                 </div>
-                <div style="margin-right:20px;">
+                <div style="flex:1; min-width:120px;">
                     <div class="info-label">Contract Type</div>
                     <div class="info-val" style="color:{COLOR_PRIMARY}">{contract_times_str}</div>
                 </div>
             </div>
-            <div style="display:flex; justify-content: flex-start; flex-wrap: wrap; margin-bottom: 20px; border-top: 1px dashed #eee; padding-top: 15px;">
-                <div style="margin-right:40px;">
+            <div style="display:flex; justify-content: flex-start; flex-wrap: wrap; margin-bottom: 20px; border-top: 1px dashed #eee; padding-top: 15px; width:100%;">
+                <div style="margin-right:60px;">
                     <div class="info-label">Delivered Scanner</div>
                     <div class="info-val">{scanner}</div>
                 </div>
-                <div style="margin-right:40px;">
+                <div style="margin-right:60px;">
                     <div class="info-label">Serial No.</div>
                     <div class="info-val">{serial_no}</div>
                 </div>
             </div>
-            <div style="padding-top:15px; border-top:1px solid #eee;">
+            <div style="padding-top:15px; border-top:1px solid #eee; width:100%;">
                 {pdf_btn_html} {notion_btn_html}
             </div>
         </div>

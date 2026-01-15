@@ -74,7 +74,6 @@ st.markdown(
 
 # [Page 1] Worldwide KOL Status
 if page == "Worldwide KOL Status":
-    # KPI Logic
     total_kol_cnt = df_master["Name"].nunique()
     
     def count_area(keyword_list):
@@ -102,10 +101,10 @@ if page == "Worldwide KOL Status":
     
     st.markdown("#### KOL Information")
     
-    c_list, c_detail = st.columns([1.2, 1])
+    # [Updated] Columns ratio adjusted for wider detail view
+    c_list, c_detail = st.columns([1, 1.5])
 
     with c_list:
-        # [Added] Filter Tags
         cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
         df_display = df_master[cols_to_show].copy().sort_values("Name")
         
@@ -124,7 +123,6 @@ if page == "Worldwide KOL Status":
         if "selected_kol_ww" not in st.session_state:
             st.session_state["selected_kol_ww"] = "-"
 
-        # Interactive Dataframe with Increased Height
         selection = st.dataframe(
             df_display,
             column_config={
@@ -150,7 +148,7 @@ if page == "Worldwide KOL Status":
         target_kol = st.session_state["selected_kol_ww"]
         if target_kol and target_kol != "-":
             render_kol_info_box(target_kol, df_master, df_contract)
-        # [Updated] 안내 문구 "Select a KOL..." 삭제됨.
+        # 안내 문구 삭제 유지
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
