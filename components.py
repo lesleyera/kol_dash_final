@@ -45,22 +45,22 @@ def render_google_map(df_master, area_filter=None):
 def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame):
     info = df_master[df_master["Name"] == kol_name].head(1)
     if info.empty: return
-    
     row = info.iloc[0]
-    # [수정] KOL 사진 경로 설정 (실제 경로에 맞춰 수정 필요)
+    
+    # [수정] KOL 사진 추가 (이미지 없을 시 대비 onerror 처리)
     img_url = f"https://raw.githubusercontent.com/user-attachments/assets/{kol_name}.png" 
     
     html_content = f"""
-    <div class="info-box">
-        <div style="display:flex; align-items:center; margin-bottom: 20px;">
-            <img src="{img_url}" onerror="this.src='https://via.placeholder.com/100?text=KOL';" 
-                 style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #eee; margin-right:25px;">
+    <div class="info-box" style="background:#ffffff; padding:20px; border-radius:12px; border:1px solid #eee; margin-bottom:20px;">
+        <div style="display:flex; align-items:center;">
+            <img src="{img_url}" onerror="this.src='https://via.placeholder.com/120?text=No+Photo';" 
+                 style="width:120px; height:120px; border-radius:12px; object-fit:cover; margin-right:30px; border:1px solid #ddd;">
             <div style="flex:1;">
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:15px;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:15px;">
                     <div><div class="info-label">Name</div><div class="info-val">{kol_name}</div></div>
-                    <div><div class="info-label">Country</div><div class="info-val">{row.get('Country','-')}</div></div>
-                    <div><div class="info-label">Area</div><div class="info-val">{row.get('Area','-')}</div></div>
+                    <div><div class="info-label">Country</div><div class="info-val">{row.get('Country','-')} ({row.get('Area','-')})</div></div>
                     <div><div class="info-label">Tier</div><div class="info-val">{row.get('Tier','-')}</div></div>
+                    <div><div class="info-label">Serial No.</div><div class="info-val">{row.get('Serial No.','-')}</div></div>
                 </div>
             </div>
         </div>
@@ -70,7 +70,7 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
 
 def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame, df_activity: pd.DataFrame):
     render_kol_info_box(kol_name, df_master, df_contract)
-    st.markdown('<div class="section-title">Activity Logs</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="font-size:1.2rem; font-weight:700; margin:20px 0 10px 0;">Activity Log & Progress</div>', unsafe_allow_html=True)
     
     log = df_activity[df_activity["Name"] == kol_name].copy()
     if not log.empty:
@@ -80,4 +80,4 @@ def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract:
         cols_disp = ["Status_norm", "Date", "Task", "Activity", "Warning/Delayed"]
         st.dataframe(log[cols_disp].style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True)
     else:
-        st.caption("No activity logs found.")
+        st.caption("No activity logs found for this KOL.")
