@@ -105,13 +105,10 @@ if page == "Worldwide KOL Status":
     c_list, c_detail = st.columns([1.2, 1])
 
     with c_list:
-        # [Deleted] "Select a KOL..." instruction text is removed.
-        
         # [Added] Filter Tags
         cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
         df_display = df_master[cols_to_show].copy().sort_values("Name")
         
-        # Combine searchable columns for filtering
         filter_options = sorted(list(set(
             df_display["Name"].tolist() + 
             df_display["Area"].dropna().unique().tolist() + 
@@ -121,8 +118,6 @@ if page == "Worldwide KOL Status":
         search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
         
         if search_tags:
-            # Filter logic: OR logic within columns, AND logic for tags could be complex.
-            # Simplified: Row matches if ANY of the selected tags appear in Name, Area, or Country
             mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
             df_display = df_display[mask]
 
@@ -139,7 +134,7 @@ if page == "Worldwide KOL Status":
             },
             use_container_width=True,
             hide_index=True,
-            height=800,  # [Updated] Increased height
+            height=800, 
             on_select="rerun",
             selection_mode="single-row"
         )
@@ -155,8 +150,7 @@ if page == "Worldwide KOL Status":
         target_kol = st.session_state["selected_kol_ww"]
         if target_kol and target_kol != "-":
             render_kol_info_box(target_kol, df_master, df_contract)
-        else:
-            st.info("Select a KOL from the list to view details.")
+        # [Updated] 안내 문구 "Select a KOL..." 삭제됨.
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
@@ -211,7 +205,6 @@ elif page == "Performance Board":
 
     st.markdown("### Monthly All Tasks")
     
-    # [Added] Keyword Filter (Tag-style)
     all_keywords = sorted(list(set(
         df_filtered["Name"].tolist() + 
         df_filtered["Task"].astype(str).unique().tolist() + 
@@ -232,16 +225,12 @@ elif page == "Performance Board":
         status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
         status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
         
-        # [Updated] Increased height
-        height_val = min(len(status_disp) * 35 + 38, 800)
-        if len(status_disp) > 10: height_val = 600
-        
+        height_val = 800
         st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
     else:
         st.info("No tasks found for this period.")
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-
     st.markdown("### Schedule")
     
     legend_html = '<div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; font-size: 0.9rem;">'

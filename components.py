@@ -41,7 +41,6 @@ def render_google_map(df_master, area_filter=None):
         for _, row in df_map.iterrows():
             name = row.get("Name", "Unknown")
             info_content = f"<b>{name}</b><br>{row.get('Hospital','')}"
-            # Google Maps uses { lat, lng } format
             markers_list.append({"name": name, "lat": float(row["Latitude"]), "lng": float(row["Longitude"]), "info": info_content})
         import json as _json
         markers_json = _json.dumps(markers_list)
@@ -148,7 +147,6 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
         st.markdown(html_content, unsafe_allow_html=True)
 
 def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame, df_activity: pd.DataFrame):
-    # This function is kept for compatibility but not primarily used in the new flow
     render_kol_info_box(kol_name, df_master, df_contract)
     st.markdown('<div class="section-title">Contract Progress Rates</div>', unsafe_allow_html=True)
     
@@ -166,5 +164,3 @@ def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract:
             use_container_width=True, hide_index=True,
             height=height_val
         )
-    else:
-        st.info("No activity records found.")
