@@ -47,39 +47,20 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
     if info.empty: return
     
     row = info.iloc[0]
-    country = row.get("Country", "-")
-    area = row.get("Area", "-")
-    tier = row.get("Tier", "-")
-    serial_no = row.get("Serial No.", "-")
-    
-    # [수정] KOL 사진 추가 (파일명: Name.png 기준, 없을 시 placeholder)
-    img_path = f"https://raw.githubusercontent.com/user-attachments/assets/kol_photos/{kol_name}.png" 
+    # [수정] KOL 사진 경로 설정 (실제 경로에 맞춰 수정 필요)
+    img_url = f"https://raw.githubusercontent.com/user-attachments/assets/{kol_name}.png" 
     
     html_content = f"""
     <div class="info-box">
-        <div style="display:flex; align-items:flex-start; margin-bottom: 20px;">
-            <div style="margin-right:30px;">
-                <img src="{img_path}" onerror="this.src='https://via.placeholder.com/120?text=No+Image';" 
-                     style="width:120px; height:120px; border-radius:12px; object-fit:cover; border:1px solid #eee;">
-            </div>
+        <div style="display:flex; align-items:center; margin-bottom: 20px;">
+            <img src="{img_url}" onerror="this.src='https://via.placeholder.com/100?text=KOL';" 
+                 style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid #eee; margin-right:25px;">
             <div style="flex:1;">
-                <div style="display:flex; justify-content: space-between; flex-wrap: wrap;">
-                    <div style="margin-right:20px; margin-bottom:10px;">
-                        <div class="info-label">Name</div>
-                        <div class="info-val">{kol_name}</div>
-                    </div>
-                    <div style="margin-right:20px; margin-bottom:10px;">
-                        <div class="info-label">Country</div>
-                        <div class="info-val">{country} ({area})</div>
-                    </div>
-                    <div style="margin-right:20px; margin-bottom:10px;">
-                        <div class="info-label">Tier</div>
-                        <div class="info-val">{tier}</div>
-                    </div>
-                    <div style="margin-right:20px; margin-bottom:10px;">
-                        <div class="info-label">Serial No.</div>
-                        <div class="info-val">{serial_no}</div>
-                    </div>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:15px;">
+                    <div><div class="info-label">Name</div><div class="info-val">{kol_name}</div></div>
+                    <div><div class="info-label">Country</div><div class="info-val">{row.get('Country','-')}</div></div>
+                    <div><div class="info-label">Area</div><div class="info-val">{row.get('Area','-')}</div></div>
+                    <div><div class="info-label">Tier</div><div class="info-val">{row.get('Tier','-')}</div></div>
                 </div>
             </div>
         </div>
@@ -89,18 +70,14 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
 
 def render_kol_detail_admin(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame, df_activity: pd.DataFrame):
     render_kol_info_box(kol_name, df_master, df_contract)
-    st.markdown('<div class="section-title">Contract Progress Rates</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Activity Logs</div>', unsafe_allow_html=True)
     
     log = df_activity[df_activity["Name"] == kol_name].copy()
     if not log.empty:
-        log = log.sort_values(by=["Status_norm", "Date"], ascending=[True, False])
+        log = log.sort_values(by="Date", ascending=False)
         log["Date"] = log["Date"].dt.strftime("%Y-%m-%d")
         log["Warning/Delayed"] = log.apply(create_warning_delayed_col, axis=1)
         cols_disp = ["Status_norm", "Date", "Task", "Activity", "Warning/Delayed"]
-        
-        st.dataframe(
-            log[cols_disp].style.apply(highlight_critical_rows, axis=1),
-            use_container_width=True, hide_index=True
-        )
+        st.dataframe(log[cols_disp].style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True)
     else:
-        st.caption("No activity logs found for this KOL.")
+        st.caption("No activity logs found.")
