@@ -21,7 +21,7 @@ try:
     st.set_page_config(
         page_title="MEDIT KOL Performance Cockpit",
         page_icon="💎",
-        layout="wide",
+        layout="wide",  # 화면 전체 너비 사용
         initial_sidebar_state="collapsed",
     )
 except FileNotFoundError:
@@ -92,17 +92,15 @@ if page == "Worldwide KOL Status":
     with k4: kpi_text("LATAM", f"{latam_cnt}", color=COLOR_NAVY)
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-
     st.markdown("#### KOL Location Map")
     map_html = render_google_map(df_master, area_filter="All")
     components.html(map_html, height=500)
     
     st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
-    
     st.markdown("#### KOL Information")
     
-    # [수정사항] 우측 상세 정보창 가로 폭을 확보하기 위해 비율을 1:2.5로 조정
-    c_list, c_detail = st.columns([1, 2.5])
+    # [수정사항] 좌측 리스트(1) 대비 우측 상세 영역(4) 비율로 설정하여 상세 영역이 가득 차도록 함
+    c_list, c_detail = st.columns([1, 4])
 
     with c_list:
         cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
@@ -114,7 +112,7 @@ if page == "Worldwide KOL Status":
             df_display["Country"].dropna().unique().tolist()
         )))
         
-        search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
+        search_tags = st.multiselect("Filter Data", options=filter_options, placeholder="Search...")
         
         if search_tags:
             mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
@@ -147,7 +145,7 @@ if page == "Worldwide KOL Status":
     with c_detail:
         target_kol = st.session_state["selected_kol_ww"]
         if target_kol and target_kol != "-":
-            # [수정사항] 개인정보 가시성 확보 및 PDF/Notion 링크 포함 렌더링
+            # 이 영역이 이제 화면 우측의 80% 가량을 차지하여 정보가 가득 표시됩니다.
             render_kol_info_box(target_kol, df_master, df_contract)
             
             st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
@@ -155,8 +153,11 @@ if page == "Worldwide KOL Status":
             if not log.empty:
                 st.markdown("##### Performance Log")
                 log["Date"] = log["Date"].dt.strftime("%Y-%m-%d")
-                # 표 가로 폭 전체 사용 설정
-                st.dataframe(log[["Date", "Task", "Activity", "Status_norm"]], use_container_width=True, hide_index=True)
+                st.dataframe(
+                    log[["Date", "Task", "Activity", "Status_norm"]], 
+                    use_container_width=True, 
+                    hide_index=True
+                )
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
@@ -168,30 +169,26 @@ elif page == "Performance Board":
     available_month_names = list(MONTH_NAME_MAP.values())
 
     c_year, c_month, c_area = st.columns(3)
-    
     with c_year:
         selected_year = st.selectbox("Year", options=available_years, index=available_years.index(default_year) if default_year in available_years else 0)
-
     with c_month:
         month_options = ["All"] + available_month_names
         current_month_str = MONTH_NAME_MAP.get(today.month, "Jan")
         default_ix = month_options.index(current_month_str) if current_month_str in month_options else 0
         selected_month_name = st.selectbox("Month", options=month_options, index=default_ix)
-
     with c_area:
         area_options = ["All"] + sorted(df_master["Area"].dropna().unique().tolist())
         selected_area = st.selectbox("Area", options=area_options, index=0)
     
-    mask = df_activity["Year"] == selected_year
+    mask = (df_activity["Year"] == selected_year)
     if selected_month_name != "All":
-        mask &= df_activity["Month_Num"] == MONTH_NAME_TO_NUM[selected_month_name]
+        mask &= (df_activity["Month_Num"] == MONTH_NAME_TO_NUM[selected_month_name])
     if selected_area != "All":
-        mask &= df_activity["Area"] == selected_area
+        mask &= (df_activity["Area"] == selected_area)
 
     df_filtered = df_activity[mask].copy()
 
     st.markdown(f"### Performance Overview")
-    
     total_kols = df_master["Name"].nunique() if selected_area == "All" else df_master[df_master["Area"] == selected_area]["Name"].nunique()
     planned_tasks = df_filtered.shape[0]
     onprogress = df_filtered[df_filtered["Status_norm"] == "On Progress"].shape[0]
@@ -208,89 +205,41 @@ elif page == "Performance Board":
     with k6: kpi_text("Warning", f"{warning}", color=COLOR_WARNING)
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-
     st.markdown("### Monthly All Tasks")
     
-    all_keywords = sorted(list(set(
-        df_filtered["Name"].tolist() + 
-        df_filtered["Task"].astype(str).unique().tolist() + 
-        df_filtered["Status_norm"].unique().tolist()
-    )))
-    
-    task_tags = st.multiselect("Filter Tasks (Name, Task, Status)", options=all_keywords, placeholder="Select tags to filter...")
-    
     status_df = df_filtered.copy()
-    if task_tags:
-         mask_task = status_df.apply(lambda x: any(tag in str(x.values) for tag in task_tags), axis=1)
-         status_df = status_df[mask_task]
-    
     if not status_df.empty:
         status_df["Warning/Delayed"] = status_df.apply(create_warning_delayed_col, axis=1)
         status_cols = ["Date", "Name", "Task", "Activity", "Status_norm", "Warning/Delayed", "Area"]
         status_disp = status_df[status_cols].rename(columns={"Status_norm": "Status"})
         status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
         status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
-        
-        height_val = 800
-        st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
+        st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=800)
     else:
         st.info("No tasks found for this period.")
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
     st.markdown("### Schedule")
     
-    legend_html = '<div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; font-size: 0.9rem;">'
-    for task_name, color in TASK_COLOR_MAP.items():
-        legend_html += f'<div style="display: flex; align-items: center;"><span style="display:inline-block; width:12px; height:12px; background-color:{color}; border-radius:50%; margin-right:6px;"></span>{task_name}</div>'
-    legend_html += '</div>'
-    st.markdown(legend_html, unsafe_allow_html=True)
-
-    if selected_month_name == "All":
-        st.info("Please select a specific month to view the Daily Schedule.")
-    else:
+    if selected_month_name != "All":
         events = []
         for _, row in df_filtered.iterrows():
-            delayed_flag = bool(row["Delayed_flag"])
-            base_color = TASK_COLOR_MAP.get(str(row["Task"]).strip(), COLOR_PRIMARY)
-            
-            if delayed_flag:
-                color = base_color
-                border = base_color
-                text_color = "#FFFFFF"
-                title = f"🚨 {row['Name']} 🚨"
-            else:
-                color = base_color
-                border = base_color
-                text_color = "#FFFFFF" 
-                title = f"{row['Name']}" 
-            
             events.append({
-                "title": title,
+                "title": row["Name"],
                 "start": row["Date"].strftime("%Y-%m-%d"),
                 "end": row["Date"].strftime("%Y-%m-%d"),
-                "allDay": True,
-                "backgroundColor": color,
-                "borderColor": border,
-                "textColor": text_color,
-                "extendedProps": {"kol_name": row["Name"], "task": row["Task"]}
+                "backgroundColor": TASK_COLOR_MAP.get(str(row["Task"]).strip(), COLOR_PRIMARY),
+                "extendedProps": {"kol_name": row["Name"]}
             })
         
         m_num = MONTH_NAME_TO_NUM[selected_month_name]
         init_date = f"{selected_year}-{m_num:02d}-01"
-
-        cal_state = st_calendar(
-            events=events,
-            options={
-                "initialDate": init_date,
-                "headerToolbar": {"left": "", "center": "title", "right": ""},
-                "height": 700,
-            },
-            key=f"cal_{selected_year}_{selected_month_name}"
-        )
+        cal_state = st_calendar(events=events, options={"initialDate": init_date, "height": 700}, key=f"cal_{selected_year}_{selected_month_name}")
 
         if cal_state and cal_state.get("eventClick"):
             clicked_kol = cal_state["eventClick"]["event"]["extendedProps"].get("kol_name")
             if clicked_kol:
                 st.markdown("---")
                 st.markdown("### KOL Information")
+                # 상세 비율을 넓게 쓰기 위해 여기에서도 필요시 레이아웃 조정을 적용할 수 있습니다.
                 render_kol_info_box(clicked_kol, df_master, df_contract)
