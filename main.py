@@ -101,64 +101,59 @@ if page == "Worldwide KOL Status":
     
     st.markdown("#### KOL Information")
     
-    # Detail 패널을 더 넓게 사용
-    c_list, c_detail = st.columns([1, 2])
+    cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No", "PDF_Link", "Notion_Link"]
+    df_display = df_master[cols_to_show].copy().sort_values("Name")
 
-    with c_list:
-        cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No", "PDF_Link", "Notion_Link"]
-        df_display = df_master[cols_to_show].copy().sort_values("Name")
+    def _clean_link(val):
+        if isinstance(val, str) and val.startswith("http"):
+            return val
+        return None
 
-        def _clean_link(val):
-            if isinstance(val, str) and val.startswith("http"):
-                return val
-            return None
+    df_display["PDF_Link"] = df_display["PDF_Link"].apply(_clean_link)
+    df_display["Notion_Link"] = df_display["Notion_Link"].apply(_clean_link)
+    
+    filter_options = sorted(list(set(
+        df_display["Name"].tolist() + 
+        df_display["Area"].dropna().unique().tolist() + 
+        df_display["Country"].dropna().unique().tolist()
+    )))
+    
+    search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
+    
+    if search_tags:
+        mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
+        df_display = df_display[mask]
 
-        df_display["PDF_Link"] = df_display["PDF_Link"].apply(_clean_link)
-        df_display["Notion_Link"] = df_display["Notion_Link"].apply(_clean_link)
-        
-        filter_options = sorted(list(set(
-            df_display["Name"].tolist() + 
-            df_display["Area"].dropna().unique().tolist() + 
-            df_display["Country"].dropna().unique().tolist()
-        )))
-        
-        search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
-        
-        if search_tags:
-            mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
-            df_display = df_display[mask]
+    if "selected_kol_ww" not in st.session_state:
+        st.session_state["selected_kol_ww"] = "-"
 
-        if "selected_kol_ww" not in st.session_state:
-            st.session_state["selected_kol_ww"] = "-"
+    selection = st.dataframe(
+        df_display,
+        column_config={
+            "Name": st.column_config.TextColumn("Name", width="medium"),
+            "Area": st.column_config.TextColumn("Region", width="small"),
+            "Country": st.column_config.TextColumn("Country", width="small"),
+            "PDF_Link": st.column_config.LinkColumn("PDF", display_text="Open PDF", width="small"),
+            "Notion_Link": st.column_config.LinkColumn("Notion", display_text="Notion Page", width="small"),
+        },
+        use_container_width=True,
+        hide_index=True,
+        height=900, 
+        on_select="rerun",
+        selection_mode="single-row"
+    )
+    
+    if selection and selection["selection"]["rows"]:
+        row_idx = selection["selection"]["rows"][0]
+        selected_name_from_df = df_display.iloc[row_idx]["Name"]
+        if st.session_state["selected_kol_ww"] != selected_name_from_df:
+            st.session_state["selected_kol_ww"] = selected_name_from_df
+            st.rerun()
 
-        selection = st.dataframe(
-            df_display,
-            column_config={
-                "Name": st.column_config.TextColumn("Name", width="medium"),
-                "Area": st.column_config.TextColumn("Region", width="small"),
-                "Country": st.column_config.TextColumn("Country", width="small"),
-                "PDF_Link": st.column_config.LinkColumn("PDF", display_text="Open PDF", width="small"),
-                "Notion_Link": st.column_config.LinkColumn("Notion", display_text="Notion Page", width="small"),
-            },
-            use_container_width=True,
-            hide_index=True,
-            height=800, 
-            on_select="rerun",
-            selection_mode="single-row"
-        )
-        
-        if selection and selection["selection"]["rows"]:
-            row_idx = selection["selection"]["rows"][0]
-            selected_name_from_df = df_display.iloc[row_idx]["Name"]
-            if st.session_state["selected_kol_ww"] != selected_name_from_df:
-                st.session_state["selected_kol_ww"] = selected_name_from_df
-                st.rerun()
-
-    with c_detail:
-        target_kol = st.session_state["selected_kol_ww"]
-        if target_kol and target_kol != "-":
-            render_kol_info_box(target_kol, df_master, df_contract)
-        # 안내 문구 삭제 유지
+    st.markdown("---")
+    target_kol = st.session_state["selected_kol_ww"]
+    if target_kol and target_kol != "-":
+        render_kol_info_box(target_kol, df_master, df_contract)
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
