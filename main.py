@@ -49,17 +49,18 @@ df_master, df_contract, df_activity = load_data(
 
 if df_master is None: st.stop()
 
-# 즉각 동기화를 위한 새로고침 버튼
-if st.button("데이터 새로고침", type="primary", key="refresh_data"):
-    st.cache_data.clear()
-    st.rerun()
-
 # -----------------------------------------------------------------
 # 2. Main Logic & Routing
 # -----------------------------------------------------------------
-c_page, c_empty = st.columns([1.5, 2.5])
+c_page, c_empty, c_refresh = st.columns([1.5, 2.0, 0.5])
 with c_page:
     page = st.selectbox("Select Board", ["Worldwide KOL Status", "Performance Board"])
+
+with c_refresh:
+    st.markdown("<br>", unsafe_allow_html=True)  # Select Board와 높이 맞추기
+    if st.button("데이터 새로고침", type="primary", key="refresh_data", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 st.markdown(
     f"""
