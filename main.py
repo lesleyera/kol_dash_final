@@ -21,7 +21,7 @@ try:
     st.set_page_config(
         page_title="MEDIT KOL Performance Cockpit",
         page_icon="💎",
-        layout="wide",  # 화면 전체 너비 사용
+        layout="wide", # 전체 화면 모드
         initial_sidebar_state="collapsed",
     )
 except FileNotFoundError:
@@ -42,6 +42,14 @@ if not check_password():
 # 1. CSS & Data Load
 # -----------------------------------------------------------------
 local_css()
+
+# 상세 영역 가득 채우기 위한 추가 CSS
+st.markdown("""
+    <style>
+    [data-testid="column"] { width: 100% !important; }
+    .stDataFrame { width: 100% !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 df_master, df_contract, df_activity = load_data(
     FILE_SETTINGS["MASTER_TAB"], FILE_SETTINGS["CONTRACT_TAB"], FILE_SETTINGS["ACTIVITY_TAB"]
@@ -99,20 +107,19 @@ if page == "Worldwide KOL Status":
     st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
     st.markdown("#### KOL Information")
     
-    # [수정사항] 좌측 리스트(1) 대비 우측 상세 영역(4) 비율로 설정하여 상세 영역이 가득 차도록 함
-    c_list, c_detail = st.columns([1, 4])
+    # [수정] 비율을 1:5로 극단적으로 조정하여 우측 상세 영역이 화면 대다수를 차지하게 설정
+    c_list, c_detail = st.columns([1, 5])
 
     with c_list:
-        cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
+        cols_to_show = ["Name", "Area"]
         df_display = df_master[cols_to_show].copy().sort_values("Name")
         
         filter_options = sorted(list(set(
             df_display["Name"].tolist() + 
-            df_display["Area"].dropna().unique().tolist() + 
-            df_display["Country"].dropna().unique().tolist()
+            df_display["Area"].dropna().unique().tolist()
         )))
         
-        search_tags = st.multiselect("Filter Data", options=filter_options, placeholder="Search...")
+        search_tags = st.multiselect("Filter", options=filter_options, placeholder="Search...")
         
         if search_tags:
             mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
@@ -126,11 +133,10 @@ if page == "Worldwide KOL Status":
             column_config={
                 "Name": st.column_config.TextColumn("Name", width="medium"),
                 "Area": st.column_config.TextColumn("Region", width="small"),
-                "Country": st.column_config.TextColumn("Country", width="small"),
             },
             use_container_width=True,
             hide_index=True,
-            height=800, 
+            height=600, 
             on_select="rerun",
             selection_mode="single-row"
         )
@@ -145,7 +151,7 @@ if page == "Worldwide KOL Status":
     with c_detail:
         target_kol = st.session_state["selected_kol_ww"]
         if target_kol and target_kol != "-":
-            # 이 영역이 이제 화면 우측의 80% 가량을 차지하여 정보가 가득 표시됩니다.
+            # 이 박스 내부에서 개인정보, PDF/Notion 링크가 모두 출력됨
             render_kol_info_box(target_kol, df_master, df_contract)
             
             st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
@@ -161,6 +167,7 @@ if page == "Worldwide KOL Status":
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
+    # (기존 로직 유지)
     df_activity["Year"] = df_activity["Date"].dt.year
     df_activity["Month_Num"] = df_activity["Date"].dt.month
     available_years = sorted(df_activity["Year"].dropna().unique().tolist())
@@ -189,20 +196,13 @@ elif page == "Performance Board":
     df_filtered = df_activity[mask].copy()
 
     st.markdown(f"### Performance Overview")
-    total_kols = df_master["Name"].nunique() if selected_area == "All" else df_master[df_master["Area"] == selected_area]["Name"].nunique()
-    planned_tasks = df_filtered.shape[0]
-    onprogress = df_filtered[df_filtered["Status_norm"] == "On Progress"].shape[0]
-    done = df_filtered[df_filtered["Status_norm"] == "Done"].shape[0]
-    delayed = df_filtered[df_filtered["Delayed_flag"] == True].shape[0]
-    warning = df_filtered[df_filtered["Warning_flag"] == True].shape[0]
-
     k1, k2, k3, k4, k5, k6 = st.columns(6)
-    with k1: kpi_text("Active KOLs", f"{total_kols}")
-    with k2: kpi_text("Total Tasks", f"{planned_tasks}")
-    with k3: kpi_text("On Progress", f"{onprogress}")
-    with k4: kpi_text("Done", f"{done}")
-    with k5: kpi_text("Delayed", f"{delayed}", color=COLOR_DANGER)
-    with k6: kpi_text("Warning", f"{warning}", color=COLOR_WARNING)
+    with k1: kpi_text("Active KOLs", f"{df_master['Name'].nunique() if selected_area == 'All' else df_master[df_master['Area'] == selected_area]['Name'].nunique()}")
+    with k2: kpi_text("Total Tasks", f"{df_filtered.shape[0]}")
+    with k3: kpi_text("On Progress", f"{df_filtered[df_filtered['Status_norm'] == 'On Progress'].shape[0]}")
+    with k4: kpi_text("Done", f"{df_filtered[df_filtered['Status_norm'] == 'Done'].shape[0]}")
+    with k5: kpi_text("Delayed", f"{df_filtered[df_filtered['Delayed_flag'] == True].shape[0]}", color=COLOR_DANGER)
+    with k6: kpi_text("Warning", f"{df_filtered[df_filtered['Warning_flag'] == True].shape[0]}", color=COLOR_WARNING)
 
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
     st.markdown("### Monthly All Tasks")
@@ -210,28 +210,18 @@ elif page == "Performance Board":
     status_df = df_filtered.copy()
     if not status_df.empty:
         status_df["Warning/Delayed"] = status_df.apply(create_warning_delayed_col, axis=1)
-        status_cols = ["Date", "Name", "Task", "Activity", "Status_norm", "Warning/Delayed", "Area"]
+        status_cols = ["Date", "Name", "Task", "Activity", "Status_norm", "Warning/Delayed"]
         status_disp = status_df[status_cols].rename(columns={"Status_norm": "Status"})
         status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
-        status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
-        st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=800)
-    else:
-        st.info("No tasks found for this period.")
-
+        st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=600)
+    
     st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
     st.markdown("### Schedule")
     
     if selected_month_name != "All":
         events = []
         for _, row in df_filtered.iterrows():
-            events.append({
-                "title": row["Name"],
-                "start": row["Date"].strftime("%Y-%m-%d"),
-                "end": row["Date"].strftime("%Y-%m-%d"),
-                "backgroundColor": TASK_COLOR_MAP.get(str(row["Task"]).strip(), COLOR_PRIMARY),
-                "extendedProps": {"kol_name": row["Name"]}
-            })
-        
+            events.append({"title": row["Name"], "start": row["Date"].strftime("%Y-%m-%d"), "end": row["Date"].strftime("%Y-%m-%d"), "backgroundColor": TASK_COLOR_MAP.get(str(row["Task"]).strip(), COLOR_PRIMARY), "extendedProps": {"kol_name": row["Name"]}})
         m_num = MONTH_NAME_TO_NUM[selected_month_name]
         init_date = f"{selected_year}-{m_num:02d}-01"
         cal_state = st_calendar(events=events, options={"initialDate": init_date, "height": 700}, key=f"cal_{selected_year}_{selected_month_name}")
@@ -240,6 +230,4 @@ elif page == "Performance Board":
             clicked_kol = cal_state["eventClick"]["event"]["extendedProps"].get("kol_name")
             if clicked_kol:
                 st.markdown("---")
-                st.markdown("### KOL Information")
-                # 상세 비율을 넓게 쓰기 위해 여기에서도 필요시 레이아웃 조정을 적용할 수 있습니다.
                 render_kol_info_box(clicked_kol, df_master, df_contract)
