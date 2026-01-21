@@ -42,6 +42,43 @@ def get_pdf_links_from_drive():
     except Exception as e:
         return {}
 
+@st.cache_data(ttl=10)
+def get_photo_links_from_drive():
+    """
+    Google Drive 폴더(KOL_Photos)의 파일명을 KOL 이름으로 매핑하여 사진 링크를 반환.
+    기본적으로 drive_settings.photo_folder_id를 사용하고, 없으면 제공된 공유 폴더 ID를 fallback으로 사용.
+    """
+    try:
+        gcp_info = st.secrets["gcp_service_account"]
+        folder_id = st.secrets["drive_settings"].get("photo_folder_id", "1IDR_brsAc_AGU3yuJhjs2-Sf0MdBVXiR")
+
+        creds = service_account.Credentials.from_service_account_info(
+            gcp_info, scopes=['https://www.googleapis.com/auth/drive.readonly']
+        )
+        service = build('drive', 'v3', credentials=creds)
+
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed=false",
+            fields="files(id, name, webViewLink, thumbnailLink)",
+            pageSize=500
+        ).execute()
+
+        files = results.get('files', [])
+        photo_map = {}
+
+        for f in files:
+            name = f.get('name', '')
+            link = f.get('webViewLink')
+            thumb = f.get('thumbnailLink')
+            # 확장자 제거 후 이름 매핑
+            clean_name = name.rsplit(".", 1)[0].strip()
+            # 썸네일이 있으면 우선 사용, 없으면 webViewLink 사용
+            photo_map[clean_name] = thumb or link
+
+        return photo_map
+    except Exception:
+        return {}
+
 @st.cache_data(ttl=5)
 def load_data(master_tab, contract_tab, activity_tab):
     conn = st.connection("gsheets", type=GSheetsConnection)
@@ -50,6 +87,7 @@ def load_data(master_tab, contract_tab, activity_tab):
         df_contract = conn.read(worksheet=contract_tab)
         df_act = conn.read(worksheet=activity_tab)
         df_act = df_act.drop_duplicates()
+        photo_link_map = get_photo_links_from_drive()
 
         col_id_m = find_col(df_master_raw, ["KOL_ID", "ID", "No"]) 
         col_name_m = find_col(df_master_raw, ["Name"])
@@ -93,8 +131,10 @@ def load_data(master_tab, contract_tab, activity_tab):
         
         if "Name" in df_master.columns:
             df_master["Auto_PDF_Link"] = df_master["Name"].astype(str).str.strip().map(drive_pdf_map)
+            df_master["Auto_Photo_Link"] = df_master["Name"].astype(str).str.strip().map(photo_link_map)
         else:
             df_master["Auto_PDF_Link"] = None
+            df_master["Auto_Photo_Link"] = None
             
         if "PDF_Link" not in df_master.columns:
              df_master["PDF_Link"] = df_master["Auto_PDF_Link"]
@@ -102,6 +142,14 @@ def load_data(master_tab, contract_tab, activity_tab):
              df_master["PDF_Link"] = df_master["PDF_Link"].replace("-", np.nan).replace("", np.nan)
              df_master["PDF_Link"] = df_master["PDF_Link"].combine_first(df_master["Auto_PDF_Link"])
              df_master["PDF_Link"] = df_master["PDF_Link"].where(pd.notnull(df_master["PDF_Link"]), None)
+
+        # Photo 컬럼 정리: 수동 입력 우선, 없으면 드라이브 자동 매핑
+        if "Photo" not in df_master.columns:
+             df_master["Photo"] = df_master["Auto_Photo_Link"]
+        else:
+             df_master["Photo"] = df_master["Photo"].replace("-", np.nan).replace("", np.nan)
+             df_master["Photo"] = df_master["Photo"].combine_first(df_master["Auto_Photo_Link"])
+             df_master["Photo"] = df_master["Photo"].where(pd.notnull(df_master["Photo"]), None)
 
         col_name_c = find_col(df_contract, ["Name"])
         col_cstart = find_col(df_contract, ["Contract_Start"])
