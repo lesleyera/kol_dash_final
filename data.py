@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 
 from utils import find_col, normalize_status, delayed_to_bool, warning_to_bool
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=0)
 def get_pdf_links_from_drive():
     try:
         gcp_info = st.secrets["gcp_service_account"]
@@ -42,7 +42,7 @@ def get_pdf_links_from_drive():
     except Exception as e:
         return {}
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=0)
 def get_photo_links_from_drive():
     """
     Google Drive 폴더(KOL_Photos)의 파일명을 KOL 이름으로 매핑하여 사진 링크를 반환.
@@ -79,7 +79,7 @@ def get_photo_links_from_drive():
     except Exception:
         return {}
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=0)
 def load_data(master_tab, contract_tab, activity_tab):
     conn = st.connection("gsheets", type=GSheetsConnection)
     try:
