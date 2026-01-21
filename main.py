@@ -49,6 +49,11 @@ df_master, df_contract, df_activity = load_data(
 
 if df_master is None: st.stop()
 
+# 즉각 동기화를 위한 새로고침 버튼
+if st.button("데이터 새로고침", type="primary", key="refresh_data"):
+    st.cache_data.clear()
+    st.rerun()
+
 # -----------------------------------------------------------------
 # 2. Main Logic & Routing
 # -----------------------------------------------------------------
