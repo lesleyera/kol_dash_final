@@ -159,11 +159,19 @@ def load_data(master_tab, contract_tab, activity_tab):
         df_contract["Contract_Start"] = pd.to_datetime(df_contract["Contract_Start"], errors="coerce")
         df_contract["Contract_End"] = pd.to_datetime(df_contract["Contract_End"], errors="coerce")
         if "Times" not in df_contract.columns: df_contract["Times"] = "-"
+        if "Contract_Start" not in df_contract.columns: df_contract["Contract_Start"] = pd.NaT
+        if "Contract_End" not in df_contract.columns: df_contract["Contract_End"] = pd.NaT
 
         if "Contract_End" in df_contract.columns and "Name" in df_contract.columns:
-            latest_contracts = df_contract.sort_values("Contract_End").groupby("Name").tail(1)[["Name", "Contract_End"]]
+            latest_contracts = (
+                df_contract
+                .sort_values("Contract_End")
+                .groupby("Name")
+                .tail(1)[["Name", "Contract_Start", "Contract_End"]]
+            )
             df_master = df_master.merge(latest_contracts, on="Name", how="left")
         else:
+            df_master["Contract_Start"] = pd.NaT
             df_master["Contract_End"] = pd.NaT
 
         col_name_a = find_col(df_act, ["Name"])
