@@ -1,294 +1,199 @@
-# app.py
+# data.py
 import streamlit as st
 import pandas as pd
-import datetime
-from PIL import Image
-import streamlit.components.v1 as components
-from streamlit_calendar import calendar as st_calendar
+import numpy as np
+from streamlit_gsheets import GSheetsConnection
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-# Modules
-from config import *
-from utils import local_css, create_warning_delayed_col, highlight_critical_rows
-from auth import check_password
-from data import load_data
-from components import kpi_text, render_google_map, render_kol_info_box
+from utils import find_col, normalize_status, delayed_to_bool, warning_to_bool
 
-# -----------------------------------------------------------------
-# 0. Auth & Page Config
-# -----------------------------------------------------------------
-try:
-    logo_image = Image.open("image_0.png")
-    st.set_page_config(
-        page_title="MEDIT KOL Performance Cockpit",
-        page_icon="💎",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-    )
-except FileNotFoundError:
-    st.set_page_config(
-        page_title="MEDIT KOL Performance Cockpit",
-        page_icon="💎",
-        layout="wide",
-        initial_sidebar_state="collapsed",
-    )
+@st.cache_data(ttl=10)
+def get_pdf_links_from_drive():
+    try:
+        gcp_info = st.secrets["gcp_service_account"]
+        folder_id = st.secrets["drive_settings"]["folder_id"]
 
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-
-if not check_password():
-    st.stop()
-
-# -----------------------------------------------------------------
-# 1. CSS & Data Load
-# -----------------------------------------------------------------
-local_css()
-
-df_master, df_contract, df_activity = load_data(
-    FILE_SETTINGS["MASTER_TAB"], FILE_SETTINGS["CONTRACT_TAB"], FILE_SETTINGS["ACTIVITY_TAB"]
-)
-
-if df_master is None: st.stop()
-
-# -----------------------------------------------------------------
-# 2. Main Logic & Routing
-# -----------------------------------------------------------------
-c_page, c_empty = st.columns([1.5, 2.5])
-with c_page:
-    page = st.selectbox("Select Board", ["Worldwide KOL Status", "Performance Board"])
-
-st.markdown(
-    f"""
-    <div class="app-header" style="display:flex; align-items:center;">
-        <div>
-            <div class="app-title">MEDIT KOL Performance Cockpit : {page}</div>
-            <div class="app-subtitle">Global KOL Management System</div>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# -----------------------------------------------------------------
-# 3. Page Content
-# -----------------------------------------------------------------
-
-# [Page 1] Worldwide KOL Status
-if page == "Worldwide KOL Status":
-    total_kol_cnt = df_master["Name"].nunique()
-    
-    def count_area(keyword_list):
-        if "Area" not in df_master.columns: return 0
-        mask = df_master["Area"].astype(str).str.lower().apply(lambda x: any(k in x for k in keyword_list))
-        return df_master[mask]["Name"].nunique()
-
-    usa_cnt = count_area(["usa", "united states", "north america", "america"])
-    europe_cnt = count_area(["europe", "eu"])
-    latam_cnt = count_area(["latam", "latin", "south america", "brazil"])
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: kpi_text("Total KOLs", f"{total_kol_cnt}")
-    with k2: kpi_text("USA / NA", f"{usa_cnt}", color=COLOR_NAVY)
-    with k3: kpi_text("Europe", f"{europe_cnt}", color=COLOR_NAVY)
-    with k4: kpi_text("LATAM", f"{latam_cnt}", color=COLOR_NAVY)
-
-    st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-
-    st.markdown("#### KOL Location Map")
-    map_html = render_google_map(df_master, area_filter="All")
-    components.html(map_html, height=500)
-    
-    st.markdown('<div style="height: 40px;"></div>', unsafe_allow_html=True)
-    
-    st.markdown("#### KOL Information")
-    
-    cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No", "PDF_Link", "Notion_Link"]
-    df_display = df_master[cols_to_show].copy().sort_values("Name")
-
-    def _clean_link(val):
-        if isinstance(val, str) and val.startswith("http"):
-            return val
-        return None
-
-    df_display["PDF_Link"] = df_display["PDF_Link"].apply(_clean_link)
-    df_display["Notion_Link"] = df_display["Notion_Link"].apply(_clean_link)
-    
-    filter_options = sorted(list(set(
-        df_display["Name"].tolist() + 
-        df_display["Area"].dropna().unique().tolist() + 
-        df_display["Country"].dropna().unique().tolist()
-    )))
-    
-    search_tags = st.multiselect("Filter Data (Name, Area, Country)", options=filter_options, placeholder="Select tags to filter...")
-    
-    if search_tags:
-        mask = df_display.apply(lambda x: any(tag in str(x.values) for tag in search_tags), axis=1)
-        df_display = df_display[mask]
-
-    if "selected_kol_ww" not in st.session_state:
-        st.session_state["selected_kol_ww"] = "-"
-
-    selection = st.dataframe(
-        df_display,
-        column_config={
-            "Name": st.column_config.TextColumn("Name", width="medium"),
-            "Area": st.column_config.TextColumn("Region", width="small"),
-            "Country": st.column_config.TextColumn("Country", width="small"),
-            "PDF_Link": st.column_config.LinkColumn("PDF", display_text="Open PDF", width="small"),
-            "Notion_Link": st.column_config.LinkColumn("Notion", display_text="Notion Page", width="small"),
-        },
-        use_container_width=True,
-        hide_index=True,
-        height=900, 
-        on_select="rerun",
-        selection_mode="single-row"
-    )
-    
-    if selection and selection["selection"]["rows"]:
-        row_idx = selection["selection"]["rows"][0]
-        selected_name_from_df = df_display.iloc[row_idx]["Name"]
-        if st.session_state["selected_kol_ww"] != selected_name_from_df:
-            st.session_state["selected_kol_ww"] = selected_name_from_df
-            st.rerun()
-
-    st.markdown("---")
-    target_kol = st.session_state["selected_kol_ww"]
-    if target_kol and target_kol != "-":
-        render_kol_info_box(target_kol, df_master, df_contract)
-
-# [Page 2] Performance Board
-elif page == "Performance Board":
-    df_activity["Year"] = df_activity["Date"].dt.year
-    df_activity["Month_Num"] = df_activity["Date"].dt.month
-    available_years = sorted(df_activity["Year"].dropna().unique().tolist())
-    today = datetime.date.today()
-    default_year = today.year if today.year in available_years else (max(available_years) if available_years else today.year)
-    available_month_names = list(MONTH_NAME_MAP.values())
-
-    c_year, c_month, c_area = st.columns(3)
-    
-    with c_year:
-        selected_year = st.selectbox("Year", options=available_years, index=available_years.index(default_year) if default_year in available_years else 0)
-
-    with c_month:
-        month_options = ["All"] + available_month_names
-        current_month_str = MONTH_NAME_MAP.get(today.month, "Jan")
-        default_ix = month_options.index(current_month_str) if current_month_str in month_options else 0
-        selected_month_name = st.selectbox("Month", options=month_options, index=default_ix)
-
-    with c_area:
-        area_options = ["All"] + sorted(df_master["Area"].dropna().unique().tolist())
-        selected_area = st.selectbox("Area", options=area_options, index=0)
-    
-    mask = df_activity["Year"] == selected_year
-    if selected_month_name != "All":
-        mask &= df_activity["Month_Num"] == MONTH_NAME_TO_NUM[selected_month_name]
-    if selected_area != "All":
-        mask &= df_activity["Area"] == selected_area
-
-    df_filtered = df_activity[mask].copy()
-
-    st.markdown(f"### Performance Overview")
-    
-    total_kols = df_master["Name"].nunique() if selected_area == "All" else df_master[df_master["Area"] == selected_area]["Name"].nunique()
-    planned_tasks = df_filtered.shape[0]
-    onprogress = df_filtered[df_filtered["Status_norm"] == "On Progress"].shape[0]
-    done = df_filtered[df_filtered["Status_norm"] == "Done"].shape[0]
-    delayed = df_filtered[df_filtered["Delayed_flag"] == True].shape[0]
-    warning = df_filtered[df_filtered["Warning_flag"] == True].shape[0]
-
-    k1, k2, k3, k4, k5, k6 = st.columns(6)
-    with k1: kpi_text("Active KOLs", f"{total_kols}")
-    with k2: kpi_text("Total Tasks", f"{planned_tasks}")
-    with k3: kpi_text("On Progress", f"{onprogress}")
-    with k4: kpi_text("Done", f"{done}")
-    with k5: kpi_text("Delayed", f"{delayed}", color=COLOR_DANGER)
-    with k6: kpi_text("Warning", f"{warning}", color=COLOR_WARNING)
-
-    st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-
-    st.markdown("### Monthly All Tasks")
-    
-    all_keywords = sorted(list(set(
-        df_filtered["Name"].tolist() + 
-        df_filtered["Task"].astype(str).unique().tolist() + 
-        df_filtered["Status_norm"].unique().tolist()
-    )))
-    
-    task_tags = st.multiselect("Filter Tasks (Name, Task, Status)", options=all_keywords, placeholder="Select tags to filter...")
-    
-    status_df = df_filtered.copy()
-    if task_tags:
-         mask_task = status_df.apply(lambda x: any(tag in str(x.values) for tag in task_tags), axis=1)
-         status_df = status_df[mask_task]
-    
-    if not status_df.empty:
-        status_df["Warning/Delayed"] = status_df.apply(create_warning_delayed_col, axis=1)
-        status_cols = ["Date", "Name", "Task", "Activity", "Status_norm", "Warning/Delayed", "Area"]
-        status_disp = status_df[status_cols].rename(columns={"Status_norm": "Status"})
-        status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
-        status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
-        
-        # 데이터 양에 따라 높이를 유동적으로 조절 (최소 280, 최대 900)
-        height_val = min(max(len(status_disp) * 35 + 80, 280), 900)
-        st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
-    else:
-        st.info("No tasks found for this period.")
-
-    st.markdown('<div style="height: 30px;"></div>', unsafe_allow_html=True)
-    st.markdown("### Schedule")
-    
-    legend_html = '<div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; font-size: 0.9rem;">'
-    for task_name, color in TASK_COLOR_MAP.items():
-        legend_html += f'<div style="display: flex; align-items: center;"><span style="display:inline-block; width:12px; height:12px; background-color:{color}; border-radius:50%; margin-right:6px;"></span>{task_name}</div>'
-    legend_html += '</div>'
-    st.markdown(legend_html, unsafe_allow_html=True)
-
-    if selected_month_name == "All":
-        st.info("Please select a specific month to view the Daily Schedule.")
-    else:
-        events = []
-        for _, row in df_filtered.iterrows():
-            delayed_flag = bool(row["Delayed_flag"])
-            base_color = TASK_COLOR_MAP.get(str(row["Task"]).strip(), COLOR_PRIMARY)
-            
-            if delayed_flag:
-                color = base_color
-                border = base_color
-                text_color = "#FFFFFF"
-                title = f"🚨 {row['Name']} 🚨"
-            else:
-                color = base_color
-                border = base_color
-                text_color = "#FFFFFF" 
-                title = f"{row['Name']}" 
-            
-            events.append({
-                "title": title,
-                "start": row["Date"].strftime("%Y-%m-%d"),
-                "end": row["Date"].strftime("%Y-%m-%d"),
-                "allDay": True,
-                "backgroundColor": color,
-                "borderColor": border,
-                "textColor": text_color,
-                "extendedProps": {"kol_name": row["Name"], "task": row["Task"]}
-            })
-        
-        m_num = MONTH_NAME_TO_NUM[selected_month_name]
-        init_date = f"{selected_year}-{m_num:02d}-01"
-
-        cal_state = st_calendar(
-            events=events,
-            options={
-                "initialDate": init_date,
-                "headerToolbar": {"left": "", "center": "title", "right": ""},
-                "height": 700,
-            },
-            key=f"cal_{selected_year}_{selected_month_name}"
+        creds = service_account.Credentials.from_service_account_info(
+            gcp_info, scopes=['https://www.googleapis.com/auth/drive.readonly']
         )
+        service = build('drive', 'v3', credentials=creds)
 
-        if cal_state and cal_state.get("eventClick"):
-            clicked_kol = cal_state["eventClick"]["event"]["extendedProps"].get("kol_name")
-            if clicked_kol:
-                st.markdown("---")
-                st.markdown("### KOL Information")
-                render_kol_info_box(clicked_kol, df_master, df_contract)
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed=false",
+            fields="files(id, name, webViewLink)",
+            pageSize=200 
+        ).execute()
+        
+        files = results.get('files', [])
+        pdf_map = {}
+        
+        for f in files:
+            name = f['name']
+            link = f['webViewLink']
+            if name.lower().endswith(".pdf"):
+                clean_name = name[:-4].strip() 
+            else:
+                clean_name = name.strip()
+            pdf_map[clean_name] = link
+            
+        return pdf_map
+
+    except Exception as e:
+        return {}
+
+@st.cache_data(ttl=10)
+def get_photo_links_from_drive():
+    """
+    Google Drive 폴더(KOL_Photos)의 파일명을 KOL 이름으로 매핑하여 사진 링크를 반환.
+    기본적으로 drive_settings.photo_folder_id를 사용하고, 없으면 제공된 공유 폴더 ID를 fallback으로 사용.
+    """
+    try:
+        gcp_info = st.secrets["gcp_service_account"]
+        folder_id = st.secrets["drive_settings"].get("photo_folder_id", "1IDR_brsAc_AGU3yuJhjs2-Sf0MdBVXiR")
+
+        creds = service_account.Credentials.from_service_account_info(
+            gcp_info, scopes=['https://www.googleapis.com/auth/drive.readonly']
+        )
+        service = build('drive', 'v3', credentials=creds)
+
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed=false",
+            fields="files(id, name, webViewLink, thumbnailLink)",
+            pageSize=500
+        ).execute()
+
+        files = results.get('files', [])
+        photo_map = {}
+
+        for f in files:
+            name = f.get('name', '')
+            link = f.get('webViewLink')
+            thumb = f.get('thumbnailLink')
+            # 확장자 제거 후 이름 매핑
+            clean_name = name.rsplit(".", 1)[0].strip()
+            # 썸네일이 있으면 우선 사용, 없으면 webViewLink 사용
+            photo_map[clean_name] = thumb or link
+
+        return photo_map
+    except Exception:
+        return {}
+
+@st.cache_data(ttl=5)
+def load_data(master_tab, contract_tab, activity_tab):
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    try:
+        df_master_raw = conn.read(worksheet=master_tab)
+        df_contract = conn.read(worksheet=contract_tab)
+        df_act = conn.read(worksheet=activity_tab)
+        df_act = df_act.drop_duplicates()
+        photo_link_map = get_photo_links_from_drive()
+
+        col_id_m = find_col(df_master_raw, ["KOL_ID", "ID", "No"]) 
+        col_name_m = find_col(df_master_raw, ["Name"])
+        col_area_m = find_col(df_master_raw, ["Area"])
+        col_country_m = find_col(df_master_raw, ["Country"])
+        col_notion_m = find_col(df_master_raw, ["Notion", "Link", "Notion Link", "Notion_Link"])
+        col_pdf_m = find_col(df_master_raw, ["PDF_Link", "Google_Sheet_Link", "PDF", "Sheet", "Drive", "File"]) 
+        col_scanner_m = find_col(df_master_raw, ["Delivered Scanner", "Scanner", "Device"])
+        col_serial_m = find_col(df_master_raw, ["Serial No", "Serial", "SN"])
+        col_lat_m = find_col(df_master_raw, ["lat", "latitude", "Latitude"])
+        col_lon_m = find_col(df_master_raw, ["lon", "longitude", "Longitude"])
+        col_hospital_m = find_col(df_master_raw, ["Hospital", "Affiliation"])
+        # [Added] Photo Column Detection
+        col_photo_m = find_col(df_master_raw, ["Photo", "Image", "Picture", "Profile"])
+        
+        rename_m = {
+            col_name_m: "Name", 
+            col_area_m: "Area", 
+            col_country_m: "Country", 
+        }
+        if col_id_m: rename_m[col_id_m] = "KOL_ID"
+        if col_notion_m: rename_m[col_notion_m] = "Notion_Link"
+        if col_pdf_m: rename_m[col_pdf_m] = "PDF_Link"
+        if col_scanner_m: rename_m[col_scanner_m] = "Delivered_Scanner"
+        if col_serial_m: rename_m[col_serial_m] = "Serial_No"
+        if col_lat_m: rename_m[col_lat_m] = "Latitude"
+        if col_lon_m: rename_m[col_lon_m] = "Longitude"
+        if col_hospital_m: rename_m[col_hospital_m] = "Hospital"
+        if col_photo_m: rename_m[col_photo_m] = "Photo"
+        
+        df_master = df_master_raw.rename(columns=rename_m)
+        
+        # Ensure columns exist
+        for col in ["KOL_ID", "Notion_Link", "PDF_Link", "Delivered_Scanner", "Serial_No", "Latitude", "Longitude", "Hospital", "Photo"]:
+            if col not in df_master.columns: df_master[col] = "-"
+
+        if "KOL_ID" in df_master.columns:
+             df_master["KOL_ID"] = pd.to_numeric(df_master["KOL_ID"], errors='coerce').fillna(0).astype(int)
+
+        drive_pdf_map = get_pdf_links_from_drive()
+        
+        if "Name" in df_master.columns:
+            df_master["Auto_PDF_Link"] = df_master["Name"].astype(str).str.strip().map(drive_pdf_map)
+            df_master["Auto_Photo_Link"] = df_master["Name"].astype(str).str.strip().map(photo_link_map)
+        else:
+            df_master["Auto_PDF_Link"] = None
+            df_master["Auto_Photo_Link"] = None
+            
+        if "PDF_Link" not in df_master.columns:
+             df_master["PDF_Link"] = df_master["Auto_PDF_Link"]
+        else:
+             df_master["PDF_Link"] = df_master["PDF_Link"].replace("-", np.nan).replace("", np.nan)
+             df_master["PDF_Link"] = df_master["PDF_Link"].combine_first(df_master["Auto_PDF_Link"])
+             df_master["PDF_Link"] = df_master["PDF_Link"].where(pd.notnull(df_master["PDF_Link"]), None)
+
+        # Photo 컬럼 정리: 수동 입력 우선, 없으면 드라이브 자동 매핑
+        if "Photo" not in df_master.columns:
+             df_master["Photo"] = df_master["Auto_Photo_Link"]
+        else:
+             df_master["Photo"] = df_master["Photo"].replace("-", np.nan).replace("", np.nan)
+             df_master["Photo"] = df_master["Photo"].combine_first(df_master["Auto_Photo_Link"])
+             df_master["Photo"] = df_master["Photo"].where(pd.notnull(df_master["Photo"]), None)
+
+        col_name_c = find_col(df_contract, ["Name"])
+        col_cstart = find_col(df_contract, ["Contract_Start"])
+        col_cend = find_col(df_contract, ["Contract_End"])
+        col_times = find_col(df_contract, ["Times", "Time", "Contract Type"])
+        df_contract = df_contract.rename(columns={col_name_c: "Name", col_cstart: "Contract_Start", col_cend: "Contract_End", col_times: "Times"})
+        df_contract["Contract_Start"] = pd.to_datetime(df_contract["Contract_Start"], errors="coerce")
+        df_contract["Contract_End"] = pd.to_datetime(df_contract["Contract_End"], errors="coerce")
+        if "Times" not in df_contract.columns: df_contract["Times"] = "-"
+        if "Contract_Start" not in df_contract.columns: df_contract["Contract_Start"] = pd.NaT
+        if "Contract_End" not in df_contract.columns: df_contract["Contract_End"] = pd.NaT
+
+        if "Contract_End" in df_contract.columns and "Name" in df_contract.columns:
+            latest_contracts = (
+                df_contract
+                .sort_values("Contract_End")
+                .groupby("Name")
+                .tail(1)[["Name", "Contract_Start", "Contract_End"]]
+            )
+            df_master = df_master.merge(latest_contracts, on="Name", how="left")
+        else:
+            df_master["Contract_Start"] = pd.NaT
+            df_master["Contract_End"] = pd.NaT
+
+        col_name_a = find_col(df_act, ["Name"])
+        col_date = find_col(df_act, ["Date"])
+        col_task_a = find_col(df_act, ["Task"])
+        col_activity_a = find_col(df_act, ["Activity", "Details"])
+        col_status = find_col(df_act, ["Status"])
+        col_delayed = find_col(df_act, ["Delayed"])
+        col_source = find_col(df_act, ["Source", "Evidence"])
+        
+        df_act = df_act.rename(columns={col_name_a: "Name", col_date: "Date", col_task_a: "Task", col_activity_a: "Activity", col_status: "Status", col_delayed: "Delayed"})
+        if col_source: df_act = df_act.rename(columns={col_source: "Source"})
+        else: df_act["Source"] = ""
+
+        df_act["Date"] = pd.to_datetime(df_act["Date"], errors="coerce")
+        df_act = df_act.dropna(subset=["Date"])
+        df_act["Status_norm"] = df_act["Status"].apply(normalize_status)
+        df_act["Delayed_flag"] = df_act["Delayed"].apply(delayed_to_bool)
+        df_act["Warning_flag"] = df_act["Delayed"].apply(warning_to_bool)
+        df_act = df_act.merge(df_master[["Name", "Area", "Country"]].drop_duplicates("Name"), on="Name", how="left")
+        
+        return df_master, df_contract, df_act
+    except Exception as e:
+        st.error(f"Data Load Error: {e}")
+        return None, None, None
