@@ -101,8 +101,8 @@ if page == "Worldwide KOL Status":
     
     st.markdown("#### KOL Information")
     
-    # [Updated] Columns ratio adjusted for wider detail view
-    c_list, c_detail = st.columns([1, 1.5])
+    # [수정] 레이아웃 비율 조정: 리스트(1) : 상세내용(2.5)으로 상세내용 폭을 대폭 확장
+    c_list, c_detail = st.columns([1, 2.5])
 
     with c_list:
         cols_to_show = ["Name", "Area", "Country", "Delivered_Scanner", "Serial_No"]
@@ -147,8 +147,20 @@ if page == "Worldwide KOL Status":
     with c_detail:
         target_kol = st.session_state["selected_kol_ww"]
         if target_kol and target_kol != "-":
+            # [수정] components.py에서 수정한 PDF/Notion 링크 버튼이 포함된 정보 박스 렌더링
             render_kol_info_box(target_kol, df_master, df_contract)
-        # 안내 문구 삭제 유지
+            
+            # 하단 활동 내역(로그) 표 가로폭 전체 확장 적용
+            st.markdown('<div style="margin-top:20px;"></div>', unsafe_allow_html=True)
+            log = df_activity[df_activity["Name"] == target_kol].copy()
+            if not log.empty:
+                st.markdown("##### Performance Log")
+                log["Date"] = log["Date"].dt.strftime("%Y-%m-%d")
+                st.dataframe(
+                    log[["Date", "Task", "Activity", "Status_norm"]], 
+                    use_container_width=True, 
+                    hide_index=True
+                )
 
 # [Page 2] Performance Board
 elif page == "Performance Board":
@@ -285,4 +297,5 @@ elif page == "Performance Board":
             if clicked_kol:
                 st.markdown("---")
                 st.markdown("### KOL Information")
+                # [수정] 캘린더 클릭 시 노출되는 정보 박스도 PDF/Notion 링크 활성화 적용
                 render_kol_info_box(clicked_kol, df_master, df_contract)
