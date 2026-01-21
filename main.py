@@ -228,7 +228,8 @@ elif page == "Performance Board":
         status_disp["Date"] = status_disp["Date"].dt.strftime("%Y-%m-%d")
         status_disp = status_disp.sort_values(by=["Warning/Delayed", "Date"], ascending=[False, True])
         
-        height_val = 800
+        # 데이터 양에 따라 높이를 유동적으로 조절 (최소 280, 최대 900)
+        height_val = min(max(len(status_disp) * 35 + 80, 280), 900)
         st.dataframe(status_disp.style.apply(highlight_critical_rows, axis=1), use_container_width=True, hide_index=True, height=height_val)
     else:
         st.info("No tasks found for this period.")
