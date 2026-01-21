@@ -62,6 +62,7 @@ def render_google_map(df_master, area_filter=None):
 def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.DataFrame):
     info = df_master[df_master["Name"] == kol_name].head(1)
     contract_info = df_contract[df_contract["Name"] == kol_name].copy()
+    
     contract_period_str = "-"
     contract_times_str = "-"
     if not contract_info.empty:
@@ -82,61 +83,55 @@ def render_kol_info_box(kol_name: str, df_master: pd.DataFrame, df_contract: pd.
     pdf_url = info.iloc[0]["PDF_Link"] if not info.empty else None 
 
     if pdf_url and str(pdf_url).startswith("http"):
-        pdf_btn_html = f'<a href="{pdf_url}" target="_blank" class="box-btn">📂 Open PDF (Drive)</a>'
+        pdf_btn_html = f'<a href="{pdf_url}" target="_blank" style="text-decoration:none; background:{COLOR_PRIMARY}; color:white; padding:8px 16px; border-radius:6px; margin-right:10px; font-size:0.85rem; display:inline-block;">📂 Open PDF</a>'
     else:
         pdf_btn_html = '<span style="color:#ccc; font-size:0.85rem; margin-right:10px;">📂 No PDF</span>'
 
     if notion_url and str(notion_url).startswith("http"):
-        notion_btn_html = f'<a href="{notion_url}" target="_blank" class="box-btn">🔗 Notion Page</a>'
+        notion_btn_html = f'<a href="{notion_url}" target="_blank" style="text-decoration:none; background:#474747; color:white; padding:8px 16px; border-radius:6px; font-size:0.85rem; display:inline-block;">🔗 Notion Page</a>'
     else:
         notion_btn_html = '<span style="color:#ccc; font-size:0.85rem;">🔗 No Notion</span>'
 
     c1, c2 = st.columns([1, 4])
-    
     with c1:
         if photo_url and str(photo_url).startswith("http"):
-            st.image(photo_url, width=150, use_container_width=True)
+            st.image(photo_url, use_container_width=True)
         else:
-            st.markdown(f"""
-            <div style="width:100%; height:150px; background-color:#f3f4f6; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#9ca3af; font-weight:600;">
-                No Photo
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div style="width:100%; height:150px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#9ca3af;">No Photo</div>', unsafe_allow_html=True)
             
     with c2:
-        # [Updated] Added width: 100% and expanded container styles
         html_content = f"""
-        <div class="info-box" style="margin-top:0; width:100%; max-width:none;">
+        <div class="info-box" style="margin-top:0; width:100%; max-width:none; box-sizing: border-box;">
             <div style="display:flex; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; width:100%;">
                 <div style="flex:1; min-width:120px; margin-right:10px;">
-                    <div class="info-label">Name</div>
-                    <div class="info-val">{kol_name}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Name</div>
+                    <div class="info-val" style="font-size:1.1rem; font-weight:700;">{kol_name}</div>
                 </div>
                 <div style="flex:1; min-width:100px; margin-right:10px;">
-                    <div class="info-label">Region</div>
-                    <div class="info-val">{area}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Region</div>
+                    <div class="info-val" style="font-size:1.1rem; font-weight:700;">{area}</div>
                 </div>
                 <div style="flex:1; min-width:100px; margin-right:10px;">
-                    <div class="info-label">Country</div>
-                    <div class="info-val">{country}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Country</div>
+                    <div class="info-val" style="font-size:1.1rem; font-weight:700;">{country}</div>
                 </div>
                 <div style="flex:1.5; min-width:180px; margin-right:10px;">
-                    <div class="info-label">Contract Period</div>
-                    <div class="info-val">{contract_period_str}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Contract Period</div>
+                    <div class="info-val" style="font-size:1.1rem; font-weight:700;">{contract_period_str}</div>
                 </div>
                 <div style="flex:1; min-width:120px;">
-                    <div class="info-label">Contract Type</div>
-                    <div class="info-val" style="color:{COLOR_PRIMARY}">{contract_times_str}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Contract Type</div>
+                    <div class="info-val" style="font-size:1.1rem; font-weight:700; color:{COLOR_PRIMARY}">{contract_times_str}</div>
                 </div>
             </div>
             <div style="display:flex; justify-content: flex-start; flex-wrap: wrap; margin-bottom: 20px; border-top: 1px dashed #eee; padding-top: 15px; width:100%;">
                 <div style="margin-right:60px;">
-                    <div class="info-label">Delivered Scanner</div>
-                    <div class="info-val">{scanner}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Delivered Scanner</div>
+                    <div class="info-val" style="font-size:1rem; font-weight:600;">{scanner}</div>
                 </div>
                 <div style="margin-right:60px;">
-                    <div class="info-label">Serial No.</div>
-                    <div class="info-val">{serial_no}</div>
+                    <div class="info-label" style="font-size:0.75rem; color:#666; font-weight:600;">Serial No.</div>
+                    <div class="info-val" style="font-size:1rem; font-weight:600;">{serial_no}</div>
                 </div>
             </div>
             <div style="padding-top:15px; border-top:1px solid #eee; width:100%;">
