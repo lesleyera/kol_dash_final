@@ -156,11 +156,12 @@ def load_data(master_tab, contract_tab, activity_tab):
         col_cend = find_col(df_contract, ["Contract_End"])
         col_times = find_col(df_contract, ["Times", "Time", "Contract Type"])
         df_contract = df_contract.rename(columns={col_name_c: "Name", col_cstart: "Contract_Start", col_cend: "Contract_End", col_times: "Times"})
-        df_contract["Contract_Start"] = pd.to_datetime(df_contract["Contract_Start"], errors="coerce")
-        df_contract["Contract_End"] = pd.to_datetime(df_contract["Contract_End"], errors="coerce")
         if "Times" not in df_contract.columns: df_contract["Times"] = "-"
         if "Contract_Start" not in df_contract.columns: df_contract["Contract_Start"] = pd.NaT
         if "Contract_End" not in df_contract.columns: df_contract["Contract_End"] = pd.NaT
+        
+        df_contract["Contract_Start"] = pd.to_datetime(df_contract["Contract_Start"], errors="coerce")
+        df_contract["Contract_End"] = pd.to_datetime(df_contract["Contract_End"], errors="coerce")
 
         if "Contract_End" in df_contract.columns and "Name" in df_contract.columns:
             latest_contracts = (
