@@ -121,6 +121,37 @@ if page == "Worldwide KOL Status":
 
     df_display["PDF_Link"] = df_display["PDF_Link"].apply(_clean_link)
     df_display["Notion_Link"] = df_display["Notion_Link"].apply(_clean_link)
+    # 날짜 하이라이트를 위한 기준일 설정
+    today = pd.Timestamp.now().normalize()
+    soon_threshold = today + pd.Timedelta(days=30)
+
+    def highlight_contract_rows(row):
+        ce = row.get("Contract_End")
+        if pd.isna(ce):
+            return [""] * len(row)
+        if ce < today:
+            color = "background-color: #FEE2E2"  # red-ish
+        elif today <= ce <= soon_threshold:
+            color = "background-color: #FEF9C3"  # yellow-ish
+        else:
+            color = ""
+        return [color] * len(row)
+
+    def color_contract_end(val):
+        if pd.isna(val):
+            return ""
+        if val < today:
+            return "color: #B91C1C; font-weight: 700;"
+        if today <= val <= soon_threshold:
+            return "color: #B45309; font-weight: 700;"
+        return ""
+
+    def format_date(val):
+        if pd.isna(val):
+            return ""
+        if isinstance(val, (pd.Timestamp, datetime.date)):
+            return pd.to_datetime(val).strftime("%Y-%m-%d")
+        return str(val)
     
     filter_options = sorted(list(set(
         df_display["Name"].tolist() + 
@@ -137,14 +168,21 @@ if page == "Worldwide KOL Status":
     if "selected_kol_ww" not in st.session_state:
         st.session_state["selected_kol_ww"] = "-"
 
+    styled_df = (
+        df_display.style
+        .apply(highlight_contract_rows, axis=1)
+        .applymap(color_contract_end, subset=["Contract_End"])
+        .format({"Contract_Start": format_date, "Contract_End": format_date})
+    )
+
     selection = st.dataframe(
-        df_display,
+        styled_df,
         column_config={
             "Name": st.column_config.TextColumn("Name", width="medium"),
             "Area": st.column_config.TextColumn("Region", width="small"),
             "Country": st.column_config.TextColumn("Country", width="small"),
-            "Contract_Start": st.column_config.DateColumn("Contract Start", format="YYYY-MM-DD", width="small"),
-            "Contract_End": st.column_config.DateColumn("Contract End", format="YYYY-MM-DD", width="small"),
+            "Contract_Start": st.column_config.TextColumn("Contract Start", width="small"),
+            "Contract_End": st.column_config.TextColumn("Contract End", width="small"),
             "PDF_Link": st.column_config.LinkColumn("PDF", display_text="Open PDF", width="small"),
             "Notion_Link": st.column_config.LinkColumn("Notion", display_text="Notion Page", width="small"),
         },
